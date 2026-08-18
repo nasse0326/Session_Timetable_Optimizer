@@ -368,13 +368,16 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-900/90 border-b border-slate-800 text-slate-400 uppercase font-semibold">
                     <tr>
-                      <th className="px-4 py-3 w-12 text-center text-slate-500">#</th>
-                      <th className="px-4 py-3 min-w-[110px]">時間</th>
-                      <th className="px-4 py-3 min-w-[90px]">カテゴリ</th>
-                      <th className="px-4 py-3 min-w-[170px]">曲名 / バンド / 原曲</th>
-                      <th className="px-4 py-3 min-w-[110px]">機材・持込</th>
-                      <th className="px-4 py-3 min-w-[240px]">担当メンバー</th>
-                      <th className="px-4 py-3 min-w-[130px]">備考 / 状況</th>
+                      <th className="px-3 py-3 w-10 text-center text-slate-500">#</th>
+                      <th className="px-3 py-3 min-w-[100px]">時間</th>
+                      <th className="px-3 py-3 min-w-[90px]">カテゴリ</th>
+                      <th className="px-3 py-3 min-w-[110px]">バンド名</th>
+                      <th className="px-3 py-3 min-w-[110px]">アーティスト名</th>
+                      <th className="px-3 py-3 min-w-[140px]">曲名</th>
+                      <th className="px-3 py-3 min-w-[90px]">レンタル</th>
+                      <th className="px-3 py-3 min-w-[90px]">持込</th>
+                      <th className="px-3 py-3 min-w-[220px]">担当メンバー</th>
+                      <th className="px-3 py-3 min-w-[120px]">備考 / 状況</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -385,13 +388,13 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                       return (
                         <React.Fragment key={idx}>
                           <tr className="hover:bg-slate-900/40 transition-colors">
-                            <td className="px-4 py-3 text-center text-slate-500 font-mono">
+                            <td className="px-3 py-3 text-center text-slate-500 font-mono">
                               {idx + 1}
                             </td>
-                            <td className="px-4 py-3 text-slate-200 font-mono whitespace-nowrap font-medium">
+                            <td className="px-3 py-3 text-slate-200 font-mono whitespace-nowrap font-medium">
                               {item.startTime} - {item.endTime}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
                                 category === '課題曲'
                                   ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
@@ -402,41 +405,36 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                                 {category}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3 text-slate-300 font-medium">
+                              {s.bandName || <span className="text-slate-600">-</span>}
+                            </td>
+                            <td className="px-3 py-3 text-slate-400">
+                              {s.artist || <span className="text-slate-600">-</span>}
+                            </td>
+                            <td className="px-3 py-3">
                               <div className="font-semibold text-slate-100 text-sm flex items-center gap-1.5">
                                 <Music className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                 <span>{s.title}</span>
                               </div>
-                              {(s.bandName || s.artist) && (
-                                <div className="text-[11px] text-slate-400 mt-0.5 pl-5 flex flex-wrap gap-2">
-                                  {s.bandName && <span className="text-slate-300 font-medium">🎸 {s.bandName}</span>}
-                                  {s.artist && <span className="text-slate-400">({s.artist})</span>}
-                                </div>
-                              )}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3 text-slate-300">
+                              {s.rental && s.rental !== 'なし' ? (
+                                <span className="text-[11px] truncate block max-w-[100px]" title={s.rental}>{s.rental}</span>
+                              ) : <span className="text-slate-600">-</span>}
+                            </td>
+                            <td className="px-3 py-3 text-slate-300">
                               <div className="space-y-1">
+                                {s.bring && s.bring !== 'なし' ? (
+                                  <span className="text-[11px] truncate block max-w-[100px]" title={s.bring}>{s.bring}</span>
+                                ) : <span className="text-slate-600">-</span>}
                                 {s.requiresLongSetup && (
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold">
                                     ⚡ 転換長
                                   </span>
                                 )}
-                                {s.bring && s.bring !== 'なし' && (
-                                  <div className="text-[11px] text-slate-300 truncate max-w-[120px]" title={`持込: ${s.bring}`}>
-                                    <span className="text-slate-500">持込:</span> {s.bring}
-                                  </div>
-                                )}
-                                {s.rental && s.rental !== 'なし' && (
-                                  <div className="text-[11px] text-slate-300 truncate max-w-[120px]" title={`レンタル: ${s.rental}`}>
-                                    <span className="text-slate-500">ﾚﾝﾀﾙ:</span> {s.rental}
-                                  </div>
-                                )}
-                                {!s.requiresLongSetup && (!s.bring || s.bring === 'なし') && (!s.rental || s.rental === 'なし') && (
-                                  <span className="text-slate-600">-</span>
-                                )}
                               </div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               <div className="flex flex-wrap gap-1.5">
                                 {sortMembers(s.members).map((m, i) => (
                                   <span
@@ -449,7 +447,7 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                                 ))}
                               </div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               {item.conflicts.length > 0 ? (
                                 <div className="flex flex-col gap-1">
                                   {item.conflicts.map((c, i) => (
@@ -480,7 +478,7 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                           </tr>
                           {item.isBreakAfter && (
                             <tr className="bg-emerald-950/25 border-y border-emerald-500/25">
-                              <td colSpan={7} className="px-4 py-2.5 text-center text-emerald-300">
+                              <td colSpan={10} className="px-3 py-2.5 text-center text-emerald-300">
                                 <div className="flex items-center justify-center gap-2 font-semibold text-xs">
                                   <Coffee className="w-4 h-4 text-emerald-400" />
                                   <span>☕ 休憩・インターバル（セット転換＆進行調整）</span>
