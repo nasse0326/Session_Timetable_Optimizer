@@ -1,21 +1,21 @@
 import { Song, SongMember, MemberConstraint } from '../types';
 
-export const SAMPLE_TSV = `曲名	Vo	Gt1	Gt2	Ba	Dr	Key	備考
-天体観測	田中	佐藤	鈴木	高橋	伊藤		
-Pretender	山田		田中	中村	小林	加藤	山田 15:00以降
-マリーゴールド	佐藤	鈴木		高橋	伊藤		田中 初参加
-Lemon	田中	山田		中村	小林		
-群青	加藤	佐藤	鈴木	高橋	伊藤	山田	加藤 16:30まで
-白日	山田	田中		中村	小林	加藤	小林 前回トッパー
-夜に駆ける	佐藤	鈴木		高橋	伊藤		
-ドライフラワー	田中	山田		中村	小林		
-紅蓮華	加藤	佐藤	鈴木	高橋	伊藤		伊藤 転換長
-炎	山田	田中		中村	小林	加藤	山田 14:00~16:00
-Session (Jam)						インスト
-怪物	田中	山田		中村	小林		
-踊	加藤	佐藤	鈴木	高橋	伊藤	山田	
-廻廻奇譚	山田	田中		中村	小林		高橋 前回トリ
-Cry Baby	佐藤	鈴木		高橋	伊藤		`;
+export const SAMPLE_TSV = `曲名	カテゴリ	Vo	Gt1	Gt2	Ba	Dr	Key	備考
+天体観測	通常	田中	佐藤	鈴木	高橋	伊藤		
+Pretender	課題曲	山田		田中	中村	小林	加藤	山田 15:00以降, 転換長
+マリーゴールド	通常	佐藤	鈴木		高橋	伊藤		田中 初参加
+Lemon	通常	田中	山田		中村	小林		
+群青	課題曲	加藤	佐藤	鈴木	高橋	伊藤	山田	加藤 16:30まで
+白日	通常	山田	田中		中村	小林	加藤	小林 前回トッパー
+夜に駆ける	通常	佐藤	鈴木		高橋	伊藤		
+ドライフラワー	通常	田中	山田		中村	小林		
+紅蓮華	課題曲	加藤	佐藤	鈴木	高橋	伊藤		転換長
+炎	通常	山田	田中		中村	小林	加藤	山田 14:00~16:00
+Session (Jam)	インスト						インスト, 転換長
+怪物	通常	田中	山田		中村	小林		
+踊	通常	加藤	佐藤	鈴木	高橋	伊藤	山田	
+廻廻奇譚	通常	山田	田中		中村	小林		高橋 前回トリ
+Cry Baby	通常	佐藤	鈴木		高橋	伊藤		`;
 
 function parseTimeStr(timeStr: string): number | null {
   // "15:30", "15時30分", "15時半", "15時"
@@ -136,6 +136,7 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
   
   const titleIdx = headers.findIndex(h => h.includes('曲') || h.toLowerCase() === 'title');
   const notesIdx = headers.findIndex(h => h.includes('備考') || h.toLowerCase() === 'notes');
+  const categoryIdx = headers.findIndex(h => h.includes('カテゴリ') || h.toLowerCase() === 'category');
   const rentalIdx = headers.findIndex(h => h.includes('レンタル'));
   const bringIdx = headers.findIndex(h => h.includes('持込') || h.includes('持ち込み'));
   const assignmentIdx = headers.findIndex(h => h.includes('課題曲'));
@@ -155,7 +156,6 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
     // Find all '名前' and 'パート' pairs by prefix or just matching 'メンバー1名前', 'メンバー1パート'
     for (let i = 0; i < headers.length; i++) {
       if (headers[i].includes('名前')) {
-        // Try to find corresponding part
         const prefix = headers[i].replace('名前', '').trim();
         const partIdx = headers.findIndex((h, idx) => idx !== i && h.includes('パート') && h.startsWith(prefix));
         if (partIdx !== -1) {
@@ -165,7 +165,15 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
     }
   } else {
     headers.forEach((h, idx) => {
-      if (idx !== titleIdx && idx !== notesIdx && idx !== rentalIdx && idx !== bringIdx && idx !== assignmentIdx && h) {
+      if (
+        idx !== titleIdx &&
+        idx !== notesIdx &&
+        idx !== categoryIdx &&
+        idx !== rentalIdx &&
+        idx !== bringIdx &&
+        idx !== assignmentIdx &&
+        h
+      ) {
         partIndices.push({ index: idx, part: h });
       }
     });
@@ -177,9 +185,8 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
 
     const title = row[titleIdx];
     let rawNotes = notesIdx !== -1 ? row[notesIdx] : '';
+    const categoryVal = categoryIdx !== -1 ? row[categoryIdx] : '';
     
-    // If Format B and no notes column, concat unused columns? 
-    // Actually, user said they will add a notes column, but we can also just use existing rawNotes.
     const members: SongMember[] = [];
 
     if (isFormatB) {
@@ -205,9 +212,12 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
       }
     }
 
-    const isSession = rawNotes ? (rawNotes.includes('インスト') || rawNotes.includes('セッション')) : false;
+    const isSession = Boolean(
+      (rawNotes && (rawNotes.includes('インスト') || rawNotes.includes('セッション'))) ||
+      (categoryVal && (categoryVal.includes('インスト') || categoryVal.includes('セッション')))
+    );
     
-    // Check rental/bring for long setup
+    // Check rental/bring or notes for long setup
     let requiresLongSetup = false;
     const isNoneVal = (val?: string) => !val || val === 'なし' || val === '無し' || val === '無' || val === 'none' || val === '-' || val === 'FALSE' || val === 'false';
     if (rentalIdx !== -1 && row[rentalIdx] && !isNoneVal(row[rentalIdx])) requiresLongSetup = true;
@@ -216,9 +226,15 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
       requiresLongSetup = true;
     }
 
-    // Assignment song
+    // Assignment song check (課題曲列, カテゴリ列, 備考欄)
     let isAssignment = false;
     if (assignmentIdx !== -1 && row[assignmentIdx] && !isNoneVal(row[assignmentIdx])) {
+      isAssignment = true;
+    }
+    if (categoryVal && (categoryVal.includes('課題曲') || categoryVal.includes('課題'))) {
+      isAssignment = true;
+    }
+    if (rawNotes && rawNotes.includes('課題曲')) {
       isAssignment = true;
     }
 
@@ -232,28 +248,34 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
       requiresLongSetup
     });
 
-    // Parse constraints from notes
+    // Parse constraints from notes (カンマ(,)や「、」、改行で区切られた各項目を解釈)
     if (rawNotes) {
       const allNames = Array.from(new Set(members.map(m => m.name)));
-      for (const name of allNames) {
-        if (rawNotes.includes(name)) {
-          const constraint = parseTimeConstraint(rawNotes);
-          const isFirstTime = rawNotes.includes(`${name} 初参加`) || rawNotes.includes(`${name}初参加`);
-          const prevTopper = rawNotes.includes(`${name} 前回トッパー`) || rawNotes.includes(`${name}前回トッパー`);
-          const prevTori = rawNotes.includes(`${name} 前回トリ`) || rawNotes.includes(`${name}前回トリ`);
-          const memberLongSetup = rawNotes.includes(`${name} 転換長`) || rawNotes.includes(`${name}転換長`) || rawNotes.includes(`${name} セッティング長`) || rawNotes.includes(`${name}セッティング長`) || rawNotes.includes(`${name} セッティング`);
-          
-          if (constraint || isFirstTime || prevTopper || prevTori || memberLongSetup) {
-            constraintsMap.set(name, {
-              name,
-              startMinutes: constraint?.startMinutes,
-              endMinutes: constraint?.endMinutes,
-              formattedText: rawNotes,
-              isFirstTime,
-              prevTopper,
-              prevTori,
-              requiresLongSetup: memberLongSetup
-            });
+      const noteItems = rawNotes.split(/[,、\n\r]+/).map(s => s.trim()).filter(Boolean);
+
+      for (const item of noteItems) {
+        for (const name of allNames) {
+          if (item.includes(name)) {
+            const timeConstraint = parseTimeConstraint(item);
+            const isFirstTime = item.includes('初参加');
+            const prevTopper = item.includes('前回トッパー') || item.includes('前トッパー');
+            const prevTori = item.includes('前回トリ') || item.includes('前トリ');
+            const memberLongSetup = item.includes('転換長') || item.includes('セッティング長') || item.includes('セッティング');
+
+            const existing = constraintsMap.get(name) || { name, formattedText: '' };
+            
+            if (timeConstraint?.startMinutes !== undefined) existing.startMinutes = timeConstraint.startMinutes;
+            if (timeConstraint?.endMinutes !== undefined) existing.endMinutes = timeConstraint.endMinutes;
+            if (isFirstTime) existing.isFirstTime = true;
+            if (prevTopper) existing.prevTopper = true;
+            if (prevTori) existing.prevTori = true;
+            if (memberLongSetup) existing.requiresLongSetup = true;
+
+            existing.formattedText = existing.formattedText 
+              ? `${existing.formattedText}, ${item}` 
+              : item;
+
+            constraintsMap.set(name, existing);
           }
         }
       }

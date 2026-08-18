@@ -143,12 +143,16 @@ export default function StepInput({ tsv, onTsvChange, songs, constraints }: Step
               </div>
               <div className="bg-slate-900/80 p-3 rounded-xl border border-indigo-500/20">
                 <span className="font-semibold text-amber-300 block mb-1">🥁 転換長・その他</span>
-                <code className="text-slate-300 bg-slate-950 px-1.5 py-0.5 rounded block mb-1">Oda 転換長</code>
+                <code className="text-slate-300 bg-slate-950 px-1.5 py-0.5 rounded block mb-1">転換長</code>
                 <code className="text-slate-300 bg-slate-950 px-1.5 py-0.5 rounded block mb-1">インスト (※人名不要)</code>
-                <p className="text-slate-400 mt-1.5">休憩明けや連続演奏に配置します</p>
+                <p className="text-slate-400 mt-1.5">休憩明けや連続演奏に優先配置します</p>
               </div>
             </div>
-            <p className="text-[11px] text-indigo-300/80">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-300/90 font-medium flex items-center gap-2">
+              <span>💡</span>
+              <span><strong>重要：</strong>備考欄に複数の制約や指定を書く場合は、必ず<strong>カンマ ( , )</strong> で区切って記入してください（例: <code className="bg-slate-950/80 px-1.5 py-0.5 rounded text-amber-200">山田 15:00以降, 田中 初参加, 転換長</code>）。</span>
+            </div>
+            <p className="text-[11px] text-indigo-300/80 mt-2">
               ※「バンドメンバー重複」「マルチプレイヤーの体力配慮」「ドラム転換効率化」などの高度なルールは、AIが自動で考慮します。
             </p>
           </div>
@@ -161,8 +165,8 @@ export default function StepInput({ tsv, onTsvChange, songs, constraints }: Step
             <div className="text-xs text-slate-300 space-y-2">
               <p>以下の文字列が1行目（ヘッダー）に含まれていると、自動的に機能が有効になります。</p>
               <ul className="list-disc pl-5 space-y-1.5 text-slate-400">
+                <li><strong className="text-emerald-300">「カテゴリ」列 または「課題曲」列</strong>: 「カテゴリ」列に「課題曲」と記載するか、「課題曲」列を用意すると、ボーカルの連続出演ペナルティが免除されます。</li>
                 <li><strong className="text-emerald-300">「レンタル」または「持込」列</strong>: 「なし」以外の文字が入っていると、自動的に「転換長」扱いになり、休憩明けなどが優先されます。</li>
-                <li><strong className="text-emerald-300">「課題曲」列</strong>: チェックが入っている曲は、ボーカルの連続出演ペナルティが免除されます。</li>
                 <li><strong className="text-emerald-300">「メンバー〇 名前」「メンバー〇 パート」</strong>: パート固定列ではなく、名前とパートがペアになったフォーマット（Format B）も自動認識します。</li>
               </ul>
             </div>
