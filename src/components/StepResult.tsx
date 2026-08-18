@@ -28,6 +28,19 @@ const getPartBadgeStyle = (part: string) => {
   return 'bg-slate-800 text-slate-300 border-slate-700';
 };
 
+const getPartPriority = (part: string) => {
+  const p = part.toLowerCase();
+  if (p.includes('vo') || p.includes('ボーカル') || p.includes('うた')) return 1;
+  if (p.includes('gt') || p.includes('ギター') || p.includes('g1') || p.includes('g2')) return 2;
+  if (p.includes('ba') || p.includes('ベース')) return 3;
+  if (p.includes('dr') || p.includes('ドラム')) return 4;
+  return 5;
+};
+
+const sortMembers = (members: {name: string, part: string}[]) => {
+  return [...members].sort((a, b) => getPartPriority(a.part) - getPartPriority(b.part));
+};
+
 export default function StepResult({ result, onOptimize, isOptimizing }: StepResultProps) {
   const [copied, setCopied] = useState(false);
 
@@ -37,7 +50,7 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
     let text = "📋 【タイムテーブル】\n\n";
     result.schedule.forEach((item, idx) => {
       text += `${idx + 1}. ${item.startTime}〜${item.endTime} ${item.song.title}\n`;
-      const parts = item.song.members.map(m => `${m.part}:${m.name}`).join(' / ');
+      const parts = sortMembers(item.song.members).map(m => `${m.part}:${m.name}`).join(' / ');
       text += `   [メンバー] ${parts}\n`;
       if (item.conflicts.length > 0) {
         text += `   ⚠️ ${item.conflicts.join(', ')}\n`;
@@ -160,7 +173,7 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1.5">
-                            {item.song.members.map((m, i) => (
+                            {sortMembers(item.song.members).map((m, i) => (
                               <span
                                 key={i}
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] ${getPartBadgeStyle(m.part)}`}
