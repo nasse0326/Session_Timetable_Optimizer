@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { SAMPLE_TSV } from '../utils/parser';
 import { Song, MemberConstraint } from '../types';

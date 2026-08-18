@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { Sparkles, Megaphone, Lightbulb, ArrowRight, Music, Radio, Headphones, ShoppingBag, Volume2 } from 'lucide-react';
 

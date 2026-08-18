@@ -1,3 +1,5 @@
+"use client";
+
 import { SessionConfig, MemberConstraint, Song } from '../types';
 import { 
   Settings2, 
