@@ -50,7 +50,7 @@ export default function AdSidebar() {
             <ShieldCheck className="w-5 h-5 text-pink-400" />
           </div>
           <p className="text-xs font-bold text-slate-300 mb-1">
-            Session Optimizer Pro
+            Session Timetable Optimizer
           </p>
           <p className="text-[11px] text-slate-400 leading-relaxed mb-3 max-w-[220px]">
             データはすべてブラウザ内で安全に計算され、外部サーバーに送信されません。

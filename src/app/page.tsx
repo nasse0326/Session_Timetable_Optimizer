@@ -73,7 +73,7 @@ export default function Home() {
           <Music2 className="w-10 h-10 text-indigo-400" />
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 tracking-tight">
-          Session Optimizer
+          Session Timetable Optimizer
         </h1>
         <p className="text-slate-400 text-base md:text-lg max-w-2xl mx-auto">
           軽音サークルやセッションの演奏希望データから、連続出演や時間制約を考慮した最適なタイムテーブルを自動生成します。
@@ -110,7 +110,7 @@ export default function Home() {
       </div>
       
       <footer className="mt-16 text-center text-sm text-slate-600">
-        <p>Session Optimizer &copy; {new Date().getFullYear()}</p>
+        <p>Session Timetable Optimizer &copy; {new Date().getFullYear()}</p>
         <p className="mt-1">All processing is done locally in your browser.</p>
       </footer>
     </main>
