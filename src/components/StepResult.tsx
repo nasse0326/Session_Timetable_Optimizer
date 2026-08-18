@@ -64,8 +64,8 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
       'バンド名',
       'アーティスト名',
       '曲名',
-      '持込機材',
-      'レンタル機材',
+      '持込',
+      'レンタル',
       'Vo',
       'Gt1',
       'Gt2',
@@ -165,34 +165,34 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
     let text = "📋 【タイムテーブル】\n\n";
     result.schedule.forEach((item, idx) => {
       const s = item.song;
-      text += `${idx + 1}. ${item.startTime}〜${item.endTime} ${s.title}\n`;
+      text += `【${idx + 1}】 ${item.startTime}〜${item.endTime}\n`;
+      text += `曲名: ${s.title}\n`;
       
-      const metaInfo: string[] = [];
-      if (s.category) metaInfo.push(`カテゴリ:${s.category}`);
-      if (s.bandName) metaInfo.push(`バンド:${s.bandName}`);
-      if (s.artist) metaInfo.push(`原曲:${s.artist}`);
-      if (metaInfo.length > 0) {
-        text += `   [情報] ${metaInfo.join(' | ')}\n`;
-      }
-
-      const gearInfo: string[] = [];
-      if (s.bring && s.bring !== 'なし') gearInfo.push(`持込:${s.bring}`);
-      if (s.rental && s.rental !== 'なし') gearInfo.push(`レンタル:${s.rental}`);
-      if (s.requiresLongSetup && gearInfo.length === 0) gearInfo.push('転換長');
-      if (gearInfo.length > 0) {
-        text += `   [機材] ${gearInfo.join(' / ')}\n`;
+      const category = s.category || (s.isAssignment ? '課題曲' : (s.isSession ? 'セッション' : '通常'));
+      text += `カテゴリ: ${category}\n`;
+      
+      if (s.bandName) text += `バンド名: ${s.bandName}\n`;
+      if (s.artist) text += `アーティスト名: ${s.artist}\n`;
+      
+      if (s.rental && s.rental !== 'なし') text += `レンタル: ${s.rental}\n`;
+      if (s.bring && s.bring !== 'なし') text += `持込: ${s.bring}\n`;
+      if (s.requiresLongSetup && (!s.bring || s.bring === 'なし') && (!s.rental || s.rental === 'なし')) {
+        text += `備考: 転換長\n`;
       }
 
       const parts = sortMembers(s.members).map(m => `${m.part}:${m.name}`).join(' / ');
       if (parts) {
-        text += `   [メンバー] ${parts}\n`;
+        text += `メンバー: ${parts}\n`;
       }
       
       if (item.conflicts.length > 0) {
-        text += `   ⚠️ ${item.conflicts.join(', ')}\n`;
+        text += `⚠️ 状況: ${item.conflicts.join(', ')}\n`;
       }
+      
       if (item.isBreakAfter) {
         text += `\n☕ 休憩（転換・インターバル）\n\n`;
+      } else {
+        text += `\n`;
       }
     });
 
