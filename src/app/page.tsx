@@ -5,6 +5,7 @@ import StepInput from '@/components/StepInput';
 import StepConfig from '@/components/StepConfig';
 import StepResult from '@/components/StepResult';
 import AdSidebar from '@/components/AdSidebar';
+import OptimizationAdModal from '@/components/OptimizationAdModal';
 import { SessionConfig, Song, MemberConstraint, OptimizationResult } from '@/types';
 import { parseTsv } from '@/utils/parser';
 import { optimizeSchedule } from '@/utils/optimizer';
@@ -35,6 +36,7 @@ export default function Home() {
 
   const [result, setResult] = useState<OptimizationResult | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [pendingResult, setPendingResult] = useState<OptimizationResult | null>(null);
 
   // Parse TSV whenever it changes
   useEffect(() => {
@@ -53,18 +55,32 @@ export default function Home() {
     
     setIsOptimizing(true);
     
-    // Use setTimeout to allow UI to update to loading state before blocking thread
+    // バックグラウンドで計算を実行しておき、モーダルのアニメーション完了時に反映
     setTimeout(() => {
       try {
         const optimized = optimizeSchedule(songs, constraints, config);
-        setResult(optimized);
+        setPendingResult(optimized);
       } catch (e) {
         console.error("Optimization failed", e);
-      } finally {
         setIsOptimizing(false);
       }
-    }, 100);
+    }, 50);
   }, [songs, constraints, config]);
+
+  const handleOptimizationComplete = useCallback(() => {
+    if (pendingResult) {
+      setResult(pendingResult);
+    }
+    setIsOptimizing(false);
+    
+    // Step 3 結果エリアへスムーズにスクロール
+    setTimeout(() => {
+      const resultElement = document.getElementById('step-result-section');
+      if (resultElement) {
+        resultElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }, [pendingResult]);
 
   return (
     <main className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto font-sans">
@@ -98,16 +114,24 @@ export default function Home() {
             songs={songs}
           />
 
-          <StepResult
-            result={result}
-            onOptimize={handleOptimize}
-            isOptimizing={isOptimizing}
-          />
+          <div id="step-result-section">
+            <StepResult
+              result={result}
+              onOptimize={handleOptimize}
+              isOptimizing={isOptimizing}
+            />
+          </div>
         </div>
 
         {/* 右側: PC用 常設・追従型サイドバー */}
         <AdSidebar />
       </div>
+
+      {/* 最適化計算中の大型広告・プログレス表示モーダル */}
+      <OptimizationAdModal
+        isOpen={isOptimizing}
+        onComplete={handleOptimizationComplete}
+      />
       
       <footer className="mt-16 text-center text-sm text-slate-600">
         <p>Session Timetable Optimizer &copy; {new Date().getFullYear()}</p>
