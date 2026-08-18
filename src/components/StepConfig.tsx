@@ -21,7 +21,7 @@ interface StepConfigProps {
 }
 
 export default function StepConfig({ config, onChange, constraints = [], songs = [] }: StepConfigProps) {
-  const handleChange = (field: keyof SessionConfig, value: string | number) => {
+  const handleChange = (field: keyof SessionConfig, value: any) => {
     onChange({ ...config, [field]: value });
   };
 
