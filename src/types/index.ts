@@ -6,10 +6,15 @@ export interface SongMember {
 export interface Song {
   id: string;
   title: string;
+  category?: string;       // カテゴリ（「通常」「課題曲」「セッション」など）
+  bandName?: string;       // バンド名
+  artist?: string;         // アーティスト名 / 原曲アーティスト
+  rental?: string;         // レンタル機材情報
+  bring?: string;          // 持込機材情報
   members: SongMember[];
   rawNotes?: string;
-  isSession?: boolean; // インスト・セッション曲フラグ
-  isAssignment?: boolean; // 課題曲フラグ
+  isSession?: boolean;     // インスト・セッション曲フラグ
+  isAssignment?: boolean;  // 課題曲フラグ
   requiresLongSetup?: boolean; // 転換長（持込機材など）
 }
 

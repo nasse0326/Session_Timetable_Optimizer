@@ -254,67 +254,92 @@ export default function StepInput({ tsv, onTsvChange, songs, constraints }: Step
               <thead className="sticky top-0 bg-slate-900/95 border-b border-slate-800 text-slate-400 font-semibold backdrop-blur">
                 <tr>
                   <th className="px-4 py-3 w-12 text-center text-slate-500">#</th>
-                  <th className="px-4 py-3 min-w-[140px]">曲名</th>
-                  <th className="px-4 py-3 min-w-[260px]">担当メンバー</th>
-                  <th className="px-4 py-3 min-w-[160px]">備考 / 制約</th>
+                  <th className="px-4 py-3 min-w-[90px]">カテゴリ</th>
+                  <th className="px-4 py-3 min-w-[150px]">曲名 / バンド / 原曲</th>
+                  <th className="px-4 py-3 min-w-[110px]">機材・持込</th>
+                  <th className="px-4 py-3 min-w-[220px]">担当メンバー</th>
+                  <th className="px-4 py-3 min-w-[140px]">備考 / 制約</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {songs.map((song, idx) => (
-                  <tr key={song.id} className="hover:bg-slate-900/40 transition-colors">
-                    <td className="px-4 py-2.5 text-center text-slate-500 font-mono">
-                      {idx + 1}
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-slate-100">
-                      <div className="flex items-center gap-2">
-                        <Music2 className="w-3.5 h-3.5 text-indigo-400/80 shrink-0" />
-                        <span>{song.title}</span>
-                      </div>
-                      {(song.requiresLongSetup || song.isAssignment || song.isSession) && (
-                        <div className="flex flex-wrap gap-1 mt-1 pl-5">
+                {songs.map((song, idx) => {
+                  const category = song.category || (song.isAssignment ? '課題曲' : (song.isSession ? 'セッション' : '通常'));
+                  return (
+                    <tr key={song.id} className="hover:bg-slate-900/40 transition-colors">
+                      <td className="px-4 py-2.5 text-center text-slate-500 font-mono">
+                        {idx + 1}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                          category === '課題曲'
+                            ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                            : category === 'インスト' || category === 'セッション'
+                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                            : 'bg-slate-800 text-slate-300 border-slate-700'
+                        }`}>
+                          {category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 font-medium text-slate-100">
+                        <div className="flex items-center gap-1.5 font-semibold text-slate-100">
+                          <Music2 className="w-3.5 h-3.5 text-indigo-400/80 shrink-0" />
+                          <span>{song.title}</span>
+                        </div>
+                        {(song.bandName || song.artist) && (
+                          <div className="text-[11px] text-slate-400 mt-0.5 pl-5 flex flex-wrap gap-2">
+                            {song.bandName && <span className="text-slate-300 font-medium">🎸 {song.bandName}</span>}
+                            {song.artist && <span className="text-slate-400">({song.artist})</span>}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="space-y-0.5">
                           {song.requiresLongSetup && (
-                            <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold">
                               ⚡ 転換長
                             </span>
                           )}
-                          {song.isAssignment && (
-                            <span className="text-[10px] bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.2 rounded font-mono">
-                              🎯 課題曲
-                            </span>
+                          {song.bring && song.bring !== 'なし' && (
+                            <div className="text-[11px] text-slate-300 truncate max-w-[110px]" title={`持込: ${song.bring}`}>
+                              <span className="text-slate-500">持込:</span> {song.bring}
+                            </div>
                           )}
-                          {song.isSession && (
-                            <span className="text-[10px] bg-purple-500/15 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                              ☕ セッション
-                            </span>
+                          {song.rental && song.rental !== 'なし' && (
+                            <div className="text-[11px] text-slate-300 truncate max-w-[110px]" title={`レンタル: ${song.rental}`}>
+                              <span className="text-slate-500">ﾚﾝﾀﾙ:</span> {song.rental}
+                            </div>
+                          )}
+                          {!song.requiresLongSetup && (!song.bring || song.bring === 'なし') && (!song.rental || song.rental === 'なし') && (
+                            <span className="text-slate-600">-</span>
                           )}
                         </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex flex-wrap gap-1.5">
-                        {song.members.map((m, mIdx) => (
-                          <span
-                            key={mIdx}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] ${getPartBadgeStyle(m.part)}`}
-                          >
-                            <span className="font-mono text-[10px] opacity-70">{m.part}</span>
-                            <span className="font-medium">{m.name}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {song.rawNotes ? (
-                        <div className="flex items-center gap-1.5 text-amber-300/90 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20 w-fit">
-                          <Clock className="w-3 h-3 text-amber-400 shrink-0" />
-                          <span className="font-mono text-[11px]">{song.rawNotes}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap gap-1.5">
+                          {song.members.map((m, mIdx) => (
+                            <span
+                              key={mIdx}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] ${getPartBadgeStyle(m.part)}`}
+                            >
+                              <span className="font-mono text-[10px] opacity-70">{m.part}</span>
+                              <span className="font-medium">{m.name}</span>
+                            </span>
+                          ))}
                         </div>
-                      ) : (
-                        <span className="text-slate-600 italic">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {song.rawNotes ? (
+                          <div className="flex items-center gap-1.5 text-amber-300/90 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20 w-fit">
+                            <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                            <span className="font-mono text-[11px]">{song.rawNotes}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 italic">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

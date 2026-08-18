@@ -1,21 +1,21 @@
 import { Song, SongMember, MemberConstraint } from '../types';
 
-export const SAMPLE_TSV = `曲名	カテゴリ	Vo	Gt1	Gt2	Ba	Dr	Key	備考
-天体観測	通常	田中	佐藤	鈴木	高橋	伊藤		
-Pretender	課題曲	山田		田中	中村	小林	加藤	山田 15:00以降, 転換長
-マリーゴールド	通常	佐藤	鈴木		高橋	伊藤		田中 初参加
-Lemon	通常	田中	山田		中村	小林		
-群青	課題曲	加藤	佐藤	鈴木	高橋	伊藤	山田	加藤 16:30まで
-白日	通常	山田	田中		中村	小林	加藤	小林 前回トッパー
-夜に駆ける	通常	佐藤	鈴木		高橋	伊藤		
-ドライフラワー	通常	田中	山田		中村	小林		
-紅蓮華	課題曲	加藤	佐藤	鈴木	高橋	伊藤		転換長
-炎	通常	山田	田中		中村	小林	加藤	山田 14:00~16:00
-Session (Jam)	インスト						インスト, 転換長
-怪物	通常	田中	山田		中村	小林		
-踊	通常	加藤	佐藤	鈴木	高橋	伊藤	山田	
-廻廻奇譚	通常	山田	田中		中村	小林		高橋 前回トリ
-Cry Baby	通常	佐藤	鈴木		高橋	伊藤		`;
+export const SAMPLE_TSV = `曲名	カテゴリ	バンド名	アーティスト	レンタル	持込	Vo	Gt1	Gt2	Ba	Dr	Key	備考
+天体観測	通常	Aバンド	BUMP OF CHICKEN	なし	なし	田中	佐藤	鈴木	高橋	伊藤		
+Pretender	課題曲	Bバンド	Official髭男dism	なし	Gtエフェクター	山田		田中	中村	小林	加藤	山田 15:00以降, 転換長
+マリーゴールド	通常	Cバンド	あいみょん	なし	なし	佐藤	鈴木		高橋	伊藤		田中 初参加
+Lemon	通常	Dバンド	米津玄師	なし	なし	田中	山田		中村	小林		
+群青	課題曲	Eバンド	YOASOBI	Keyスタンド	なし	加藤	佐藤	鈴木	高橋	伊藤	山田	加藤 16:30まで
+白日	通常	Fバンド	King Gnu	なし	なし	山田	田中		中村	小林	加藤	小林 前回トッパー
+夜に駆ける	通常	Gバンド	YOASOBI	なし	なし	佐藤	鈴木		高橋	伊藤		
+ドライフラワー	通常	Hバンド	優里	なし	なし	田中	山田		中村	小林		
+紅蓮華	課題曲	Iバンド	LiSA	なし	ツインペダル	加藤	佐藤	鈴木	高橋	伊藤		転換長
+炎	通常	Jバンド	LiSA	なし	なし	山田	田中		中村	小林	加藤	山田 14:00~16:00
+Session (Jam)	インスト	セッション隊	Original	なし	なし						インスト, 転換長
+怪物	通常	Kバンド	YOASOBI	なし	なし	田中	山田		中村	小林		
+踊	通常	Lバンド	Ado	なし	なし	加藤	佐藤	鈴木	高橋	伊藤	山田	
+廻廻奇譚	通常	Mバンド	Eve	なし	なし	山田	田中		中村	小林		高橋 前回トリ
+Cry Baby	通常	Nバンド	Official髭男dism	なし	なし	佐藤	鈴木		高橋	伊藤		`;
 
 function parseTimeStr(timeStr: string): number | null {
   // "15:30", "15時30分", "15時半", "15時"
@@ -137,8 +137,10 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
   const titleIdx = headers.findIndex(h => h.includes('曲') || h.toLowerCase() === 'title');
   const notesIdx = headers.findIndex(h => h.includes('備考') || h.toLowerCase() === 'notes');
   const categoryIdx = headers.findIndex(h => h.includes('カテゴリ') || h.toLowerCase() === 'category');
-  const rentalIdx = headers.findIndex(h => h.includes('レンタル'));
-  const bringIdx = headers.findIndex(h => h.includes('持込') || h.includes('持ち込み'));
+  const bandNameIdx = headers.findIndex(h => h.includes('バンド') || h.toLowerCase() === 'band');
+  const artistIdx = headers.findIndex(h => h.includes('アーティスト') || h.toLowerCase() === 'artist');
+  const rentalIdx = headers.findIndex(h => h.includes('レンタル') || h.toLowerCase() === 'rental');
+  const bringIdx = headers.findIndex(h => h.includes('持込') || h.includes('持ち込み') || h.toLowerCase() === 'bring');
   const assignmentIdx = headers.findIndex(h => h.includes('課題曲'));
 
   // Detect Format B (Name-Part pairs) vs Format A (Part columns)
@@ -169,6 +171,8 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
         idx !== titleIdx &&
         idx !== notesIdx &&
         idx !== categoryIdx &&
+        idx !== bandNameIdx &&
+        idx !== artistIdx &&
         idx !== rentalIdx &&
         idx !== bringIdx &&
         idx !== assignmentIdx &&
@@ -186,6 +190,10 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
     const title = row[titleIdx];
     let rawNotes = notesIdx !== -1 ? row[notesIdx] : '';
     const categoryVal = categoryIdx !== -1 ? row[categoryIdx] : '';
+    const bandNameVal = bandNameIdx !== -1 ? row[bandNameIdx] : '';
+    const artistVal = artistIdx !== -1 ? row[artistIdx] : '';
+    const rentalVal = rentalIdx !== -1 ? row[rentalIdx] : '';
+    const bringVal = bringIdx !== -1 ? row[bringIdx] : '';
     
     const members: SongMember[] = [];
 
@@ -241,6 +249,11 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
     songs.push({
       id: `song-${i}`,
       title,
+      category: categoryVal || (isAssignment ? '課題曲' : (isSession ? 'セッション' : undefined)),
+      bandName: bandNameVal || undefined,
+      artist: artistVal || undefined,
+      rental: rentalVal || undefined,
+      bring: bringVal || undefined,
       members,
       rawNotes: rawNotes || undefined,
       isSession,
