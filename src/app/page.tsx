@@ -83,47 +83,44 @@ export default function Home() {
   }, [pendingResult]);
 
   return (
-    <main className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto font-sans">
-      <header className="mb-10 text-center space-y-4">
-        <div className="inline-flex items-center justify-center p-3 bg-indigo-500/10 rounded-2xl mb-2">
-          <Music2 className="w-10 h-10 text-indigo-400" />
+    <main className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto font-sans">
+      <header className="mb-8 text-center space-y-3">
+        <div className="inline-flex items-center justify-center p-3 bg-indigo-500/10 rounded-2xl mb-1">
+          <Music2 className="w-9 h-9 text-indigo-400" />
         </div>
-        <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 tracking-tight">
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 tracking-tight">
           Session Timetable Optimizer
         </h1>
-        <p className="text-slate-400 text-base md:text-lg max-w-2xl mx-auto">
+        <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto">
           軽音サークルやセッションの演奏希望データから、連続出演や時間制約を考慮した最適なタイムテーブルを自動生成します。
         </p>
       </header>
 
-      {/* メインレイアウト: PC (xl以上) では右側に固定サイドバーを配置 */}
-      <div className="flex flex-col xl:flex-row items-start gap-8 justify-center">
-        {/* 左側: メインツール領域 */}
-        <div className="flex-1 w-full max-w-5xl space-y-8">
-          <StepInput
-            tsv={tsv}
-            onTsvChange={setTsv}
-            songs={songs}
-            constraints={constraints}
-          />
+      {/* メインツール領域: 1カラムで美しく中央配置 */}
+      <div className="w-full space-y-8">
+        <StepInput
+          tsv={tsv}
+          onTsvChange={setTsv}
+          songs={songs}
+          constraints={constraints}
+        />
 
-          <StepConfig
-            config={config}
-            onChange={setConfig}
-            constraints={constraints}
-            songs={songs}
-          />
+        <StepConfig
+          config={config}
+          onChange={setConfig}
+          constraints={constraints}
+          songs={songs}
+        />
 
-          <div id="step-result-section">
-            <StepResult
-              result={result}
-              onOptimize={handleOptimize}
-              isOptimizing={isOptimizing}
-            />
-          </div>
+        <div id="step-result-section">
+          <StepResult
+            result={result}
+            onOptimize={handleOptimize}
+            isOptimizing={isOptimizing}
+          />
         </div>
 
-        {/* 右側: PC用 常設・追従型サイドバー */}
+        {/* ツール下部のスポンサー・バナーエリア */}
         <AdSidebar />
       </div>
 
