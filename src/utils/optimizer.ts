@@ -68,6 +68,7 @@ export function evaluateSchedule(
     placement: config.weights?.placement ?? 1.0,
     efficiency: config.weights?.efficiency ?? 1.0,
     longSetup: config.weights?.longSetup ?? 1.0,
+    assignment: config.weights?.assignment ?? 1.0,
   };
   const isLive = config.mode === 'live';
   
@@ -90,6 +91,22 @@ export function evaluateSchedule(
         score += 200 * W.placement;
         violations.placement++;
         item.conflicts.push(`セッション曲の配置位置不適切 (休憩明け推奨)`);
+      }
+    }
+
+    // 0.5. Assignment song placement (課題曲を開始側に集約)
+    if (item.song.isAssignment && W.assignment > 0) {
+      // 曲順インデックス i が後ろになるほどペナルティ
+      score += i * 40 * W.assignment;
+
+      // 前半（全体の半分）以降に配置された場合の追加ペナルティ
+      const midpoint = Math.ceil(schedule.length / 2);
+      if (i >= midpoint) {
+        score += 150 * W.assignment;
+        violations.placement++;
+        if (W.assignment >= 1.2 && !item.conflicts.includes('課題曲の後半配置 (前半推奨)')) {
+          item.conflicts.push('課題曲の後半配置 (前半推奨)');
+        }
       }
     }
 
@@ -314,7 +331,16 @@ export function optimizeSchedule(
   const movableSongs = songs.filter(s => s.id !== config.fixedTopperId && s.id !== config.fixedToriId);
 
   for (let r = 0; r < NUM_RESTARTS; r++) {
-    const shuffledMovable = shuffle(movableSongs);
+    let shuffledMovable: Song[];
+    if (r % 2 === 0 && movableSongs.some(s => s.isAssignment)) {
+      // 偶数回目の再起動では課題曲を前方に寄せた初期解からスタート
+      const assignments = movableSongs.filter(s => s.isAssignment);
+      const nonAssignments = movableSongs.filter(s => !s.isAssignment);
+      shuffledMovable = [...shuffle(assignments), ...shuffle(nonAssignments)];
+    } else {
+      shuffledMovable = shuffle(movableSongs);
+    }
+
     let currentOrder = [...shuffledMovable];
     if (topper) currentOrder.unshift(topper);
     if (tori) currentOrder.push(tori);

@@ -230,6 +230,13 @@ export default function StepConfig({ config, onChange, constraints = [], songs =
             disabled={config.mode === 'live'} 
           />
           <WeightSlider 
+            label="課題曲の前半集中" 
+            icon="🎼" 
+            description="全員参加や初心者歓迎の「課題曲」を開始側（第1部・前半）に極力集めて配置します。"
+            value={config.weights.assignment ?? 1.0} 
+            onChange={(v) => handleWeightChange('assignment', v)} 
+          />
+          <WeightSlider 
             label="バンド被り時ボーナス" 
             icon="🤝" 
             description="曲のメンバーの半数以上が一致する場合、転換効率化のために連続演奏を促します（連続ペナルティ免除）。"

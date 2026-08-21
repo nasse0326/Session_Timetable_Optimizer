@@ -48,6 +48,7 @@ export interface SessionConfig {
     placement: number;
     efficiency: number;
     longSetup: number;
+    assignment?: number;
   };
 }
 

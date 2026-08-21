@@ -31,7 +31,8 @@ export default function Home() {
       vocal: 1.0,
       placement: 1.0,
       efficiency: 1.0,
-      longSetup: 1.0
+      longSetup: 1.0,
+      assignment: 1.0
     }
   });
 
