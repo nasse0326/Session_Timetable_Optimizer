@@ -104,8 +104,8 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
       const category = s.category || (s.isAssignment ? '課題曲' : (s.isSession ? 'セッション' : '通常'));
       const band = s.bandName || '';
       const artist = s.artist || '';
-      const rental = isNoneVal(s.rental) ? '' : (s.rental || '');
-      const bring = (isNoneVal(s.bring) ? '' : (s.bring || '')) || (s.requiresLongSetup ? '転換長' : '');
+      const rental = s.rental || '';
+      const bring = s.bring || (s.requiresLongSetup ? '転換長' : '');
       const notes = (s.rawNotes || '').replace(/[\t\r\n]+/g, ' ');
       const conflicts = item.conflicts.length > 0 ? item.conflicts.join('; ') : '';
 
@@ -176,9 +176,9 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
       if (s.bandName) text += `バンド名: ${s.bandName}\n`;
       if (s.artist) text += `アーティスト名: ${s.artist}\n`;
       
-      if (s.rental && s.rental !== 'なし') text += `レンタル: ${s.rental}\n`;
-      if (s.bring && s.bring !== 'なし') text += `持込: ${s.bring}\n`;
-      if (s.requiresLongSetup && (!s.bring || s.bring === 'なし') && (!s.rental || s.rental === 'なし')) {
+      if (s.rental) text += `レンタル: ${s.rental}\n`;
+      if (s.bring) text += `持込: ${s.bring}\n`;
+      if (s.requiresLongSetup && !s.bring && !s.rental) {
         text += `備考: 転換長\n`;
       }
 
@@ -420,13 +420,13 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                               </div>
                             </td>
                             <td className="px-3 py-3 text-slate-300">
-                              {s.rental && s.rental !== 'なし' ? (
+                              {s.rental ? (
                                 <span className="text-[11px] truncate block max-w-[100px]" title={s.rental}>{s.rental}</span>
                               ) : <span className="text-slate-600">-</span>}
                             </td>
                             <td className="px-3 py-3 text-slate-300">
                               <div className="space-y-1">
-                                {s.bring && s.bring !== 'なし' ? (
+                                {s.bring ? (
                                   <span className="text-[11px] truncate block max-w-[100px]" title={s.bring}>{s.bring}</span>
                                 ) : <span className="text-slate-600">-</span>}
                                 {s.requiresLongSetup && (

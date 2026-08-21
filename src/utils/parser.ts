@@ -134,13 +134,13 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
   // Remove newlines from headers for easier matching
   const headers = parsedRows[0].map(h => h.replace(/\r?\n/g, '').trim());
   
-  const titleIdx = headers.findIndex(h => h.includes('曲') || h.toLowerCase() === 'title');
-  const notesIdx = headers.findIndex(h => h.includes('備考') || h.toLowerCase() === 'notes');
-  const categoryIdx = headers.findIndex(h => h.includes('カテゴリ') || h.toLowerCase() === 'category');
-  const bandNameIdx = headers.findIndex(h => h.includes('バンド') || h.toLowerCase() === 'band');
-  const artistIdx = headers.findIndex(h => h.includes('アーティスト') || h.toLowerCase() === 'artist');
+  const titleIdx = headers.findIndex(h => h.includes('曲') || h.includes('タイトル') || h.toLowerCase() === 'title' || h.toLowerCase() === 'song');
+  const notesIdx = headers.findIndex(h => h.includes('備考') || h.includes('メモ') || h.toLowerCase() === 'notes' || h.toLowerCase() === 'memo');
+  const categoryIdx = headers.findIndex(h => h.includes('カテゴリ') || h.includes('区分') || h.includes('種別') || h.toLowerCase() === 'category' || h.toLowerCase() === 'type');
+  const bandNameIdx = headers.findIndex(h => h.includes('バンド') || h.toLowerCase() === 'band' || h.includes('グループ') || h.includes('ユニット'));
+  const artistIdx = headers.findIndex(h => h.includes('アーティスト') || h.includes('原曲') || h.includes('歌手') || h.includes('本家') || h.toLowerCase() === 'artist');
   const rentalIdx = headers.findIndex(h => h.includes('レンタル') || h.toLowerCase() === 'rental');
-  const bringIdx = headers.findIndex(h => h.includes('持込') || h.includes('持ち込み') || h.toLowerCase() === 'bring');
+  const bringIdx = headers.findIndex(h => h.includes('持込') || h.includes('持ち込み') || h.includes('持参') || h.toLowerCase() === 'bring');
   const assignmentIdx = headers.findIndex(h => h.includes('課題曲'));
 
   // Detect Format B (Name-Part pairs) vs Format A (Part columns)

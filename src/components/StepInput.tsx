@@ -298,13 +298,13 @@ export default function StepInput({ tsv, onTsvChange, songs, constraints }: Step
                         </div>
                       </td>
                       <td className="px-3 py-2.5 text-slate-300">
-                        {song.rental && song.rental !== 'なし' ? (
+                        {song.rental ? (
                           <span className="text-[11px] truncate block max-w-[100px]" title={song.rental}>{song.rental}</span>
                         ) : <span className="text-slate-600">-</span>}
                       </td>
                       <td className="px-3 py-2.5 text-slate-300">
                         <div className="space-y-1">
-                          {song.bring && song.bring !== 'なし' ? (
+                          {song.bring ? (
                             <span className="text-[11px] truncate block max-w-[100px]" title={song.bring}>{song.bring}</span>
                           ) : <span className="text-slate-600">-</span>}
                           {song.requiresLongSetup && (
