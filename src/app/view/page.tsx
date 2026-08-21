@@ -413,19 +413,19 @@ function ParticipantViewContent() {
         </div>
       ) : (
         /* 表表示 */
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden overflow-x-auto shadow-xl">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 font-semibold uppercase">
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden max-h-[650px] overflow-y-auto overflow-x-auto shadow-xl relative">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="sticky top-0 z-20 bg-slate-950 border-b border-slate-700 text-slate-300 font-bold uppercase shadow-md">
               <tr>
-                <th className="px-3 py-3 w-8 text-center text-slate-500">#</th>
-                <th className="px-3 py-3 min-w-[85px]">時間</th>
-                <th className="px-3 py-3 min-w-[75px]">カテゴリ</th>
-                <th className="px-3 py-3 min-w-[130px]">曲名 / バンド</th>
-                <th className="px-3 py-3 min-w-[180px]">担当メンバー</th>
-                <th className="px-3 py-3 min-w-[90px]">機材</th>
+                <th className="sticky left-0 z-30 bg-slate-950 px-2.5 py-3 w-10 text-center text-slate-400">#</th>
+                <th className="sticky left-10 z-30 bg-slate-950 px-3 py-3 min-w-[95px] border-r border-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">時間</th>
+                <th className="px-3 py-3 min-w-[80px]">カテゴリ</th>
+                <th className="px-3 py-3 min-w-[140px]">曲名 / バンド</th>
+                <th className="px-3 py-3 min-w-[200px]">担当メンバー</th>
+                <th className="px-3 py-3 min-w-[100px]">機材</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-800/60 bg-slate-950">
               {filteredSchedule.map((item, idx) => {
                 const s = item.song;
                 const isUserSong = selectedMember && s.members.some(m => m.name === selectedMember);
@@ -433,11 +433,17 @@ function ParticipantViewContent() {
 
                 return (
                   <React.Fragment key={idx}>
-                    <tr className={`transition-colors ${isUserSong ? 'bg-indigo-950/40 font-medium' : 'hover:bg-slate-900/40'}`}>
-                      <td className="px-3 py-3 text-center text-slate-500 font-mono">
+                    <tr className={`transition-colors group ${isUserSong ? 'bg-indigo-950/40 font-medium' : 'hover:bg-slate-900/60'}`}>
+                      {/* 固定列 1: # */}
+                      <td className={`sticky left-0 z-10 px-2.5 py-3 text-center text-slate-400 font-mono font-bold ${
+                        isUserSong ? 'bg-indigo-950/80' : 'bg-slate-950 group-hover:bg-slate-900'
+                      }`}>
                         {data.schedule.indexOf(item) + 1}
                       </td>
-                      <td className="px-3 py-3 font-mono text-slate-200 whitespace-nowrap font-medium">
+                      {/* 固定列 2: 時間 */}
+                      <td className={`sticky left-10 z-10 px-3 py-3 font-mono whitespace-nowrap font-medium border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.3)] ${
+                        isUserSong ? 'bg-indigo-950/80 text-white' : 'bg-slate-950 text-slate-200 group-hover:bg-slate-900'
+                      }`}>
                         {item.startTime} - {item.endTime}
                       </td>
                       <td className="px-3 py-3">
@@ -451,12 +457,15 @@ function ParticipantViewContent() {
                           {category}
                         </span>
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="font-bold text-slate-100 text-xs">{s.title}</div>
+                      <td className="px-3 py-3 break-words">
+                        <div className="font-bold text-slate-100 text-xs flex items-start gap-1">
+                          <Music className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                          <span>{s.title}</span>
+                        </div>
                         {(s.bandName || s.artist) && (
-                          <div className="text-[10px] text-slate-400 mt-0.5">
-                            {s.bandName && <span>{s.bandName} </span>}
-                            {s.artist && <span>({s.artist})</span>}
+                          <div className="text-[11px] text-slate-400 mt-0.5 break-words">
+                            {s.bandName && <span className="text-slate-300 font-medium">{s.bandName} </span>}
+                            {s.artist && <span className="text-slate-400">({s.artist})</span>}
                           </div>
                         )}
                       </td>
@@ -466,7 +475,7 @@ function ParticipantViewContent() {
                             <span
                               key={mIdx}
                               className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] ${getPartBadgeStyle(m.part)} ${
-                                selectedMember === m.name ? 'ring-1 ring-pink-400 font-bold' : ''
+                                selectedMember === m.name ? 'ring-2 ring-pink-400 font-bold scale-105' : ''
                               }`}
                             >
                               <span className="font-mono text-[9px] opacity-70">{m.part}</span>
@@ -475,13 +484,24 @@ function ParticipantViewContent() {
                           ))}
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-[11px] text-slate-300">
-                        {s.bring ? `持込: ${s.bring}` : s.rental ? `レンタル: ${s.rental}` : '-'}
+                      <td className="px-3 py-3 text-[11px] text-slate-300 break-words">
+                        <div className="space-y-1">
+                          {s.bring && <div>持込: {s.bring}</div>}
+                          {s.rental && <div>レンタル: {s.rental}</div>}
+                          {!s.bring && !s.rental && <span className="text-slate-600">-</span>}
+                          {s.requiresLongSetup && (
+                            <div>
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-bold">
+                                ⚡ 転換長
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                     {item.isBreakAfter && (
-                      <tr className="bg-emerald-950/20 border-y border-emerald-500/25">
-                        <td colSpan={6} className="px-3 py-2 text-center text-emerald-300 font-semibold text-xs">
+                      <tr className="bg-emerald-950/30 border-y border-emerald-500/30">
+                        <td colSpan={6} className="px-3 py-2.5 text-center text-emerald-300 font-semibold text-xs">
                           ☕ 休憩・インターバル（セット転換＆進行調整）
                         </td>
                       </tr>

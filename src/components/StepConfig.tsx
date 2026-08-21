@@ -149,7 +149,9 @@ export default function StepConfig({ config, onChange, constraints = [], songs =
             />
             <span className="text-xs text-slate-400">分</span>
           </div>
-          <span className="text-[11px] text-slate-500 block">自動で均等に休憩を挿入</span>
+          <span className="text-[11px] text-slate-500 block leading-tight">
+            ※ 休憩も一つのセッションとして計算するため、曲間転換時間に更に何分加えるかを設定してください
+          </span>
         </div>
       </div>
 
