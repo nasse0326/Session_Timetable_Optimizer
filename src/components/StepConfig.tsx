@@ -12,7 +12,8 @@ import {
   ListOrdered,
   Anchor,
   Mic2,
-  Guitar
+  Guitar,
+  Users
 } from 'lucide-react';
 
 interface StepConfigProps {
@@ -76,10 +77,11 @@ export default function StepConfig({ config, onChange, constraints = [], songs =
       </div>
 
       {/* 進行設定フォーム */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {/* 1. 開始時刻（集合） */}
         <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
           <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-            <Clock className="w-4 h-4 text-emerald-400" /> 開始時刻
+            <Clock className="w-4 h-4 text-emerald-400" /> 開始時刻 (集合)
           </label>
           <input
             type="time"
@@ -87,9 +89,45 @@ export default function StepConfig({ config, onChange, constraints = [], songs =
             onChange={(e) => handleChange('startTime', e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
           />
-          <span className="text-[11px] text-slate-500 block">イベントの開始時刻</span>
+          <span className="text-[11px] text-slate-500 block">イベントの集合・開場時刻</span>
         </div>
 
+        {/* 2. 集合・セッティング時間 */}
+        <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+            <Users className="w-4 h-4 text-emerald-400" /> 集合・セッティング枠
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              step="5"
+              value={config.openingMinutes ?? 15}
+              onChange={(e) => handleChange('openingMinutes', parseInt(e.target.value) || 0)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+            />
+            <span className="text-xs text-slate-400 whitespace-nowrap">分</span>
+          </div>
+          <span className="text-[11px] text-slate-500 block">1曲目開始前の準備・音出し時間 (0で即演奏)</span>
+        </div>
+
+        {/* 3. 終了予定時刻 */}
+        <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+            <Clock className="w-4 h-4 text-emerald-400" /> 終了予定時刻 (完全撤収)
+          </label>
+          <input
+            type="time"
+            value={config.targetEndTime || ''}
+            onChange={(e) => handleChange('targetEndTime', e.target.value || undefined)}
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+          />
+          <span className="text-[11px] text-slate-500 block leading-tight">
+            ※ 全曲終了が遅い場合は自動的に延長されます
+          </span>
+        </div>
+
+        {/* 4. 1曲の演奏時間 */}
         <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
           <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
             <Sliders className="w-4 h-4 text-emerald-400" /> 1曲の演奏時間
@@ -107,6 +145,7 @@ export default function StepConfig({ config, onChange, constraints = [], songs =
           <span className="text-[11px] text-slate-500 block">実演奏の想定時間</span>
         </div>
 
+        {/* 5. 曲間転換時間 */}
         <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
           <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
             <FastForward className="w-4 h-4 text-emerald-400" /> 曲間転換時間
@@ -124,6 +163,7 @@ export default function StepConfig({ config, onChange, constraints = [], songs =
           <span className="text-[11px] text-slate-500 block">ステージ入替時間</span>
         </div>
 
+        {/* 6. 構成・定期休憩 */}
         <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
           <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
             <ListOrdered className="w-4 h-4 text-emerald-400" /> 構成・定期休憩

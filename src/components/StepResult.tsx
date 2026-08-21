@@ -7,7 +7,7 @@ import SharePublishModal from './SharePublishModal';
 import { 
   Play, Copy, Check, AlertTriangle, Coffee, Loader2, 
   Calendar, Sparkles, FileSpreadsheet, MessageSquare, 
-  Music, Table, Download, Eye, Share2, Smartphone
+  Music, Table, Download, Eye, Share2, Smartphone, Clock
 } from 'lucide-react';
 
 interface StepResultProps {
@@ -60,7 +60,12 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
 
   const handlePublishShare = () => {
     if (!result || result.schedule.length === 0) return;
-    const compressed = encodeScheduleToUrl(result.schedule);
+    const compressed = encodeScheduleToUrl(result.schedule, undefined, {
+      eventStartTime: result.eventStartTime,
+      openingEndTime: result.openingEndTime,
+      eventEndTime: result.eventEndTime,
+      isExtended: result.isExtended
+    });
     const url = `${window.location.origin}/view#d=${compressed}`;
     setShareUrl(url);
     setIsShareModalOpen(true);
@@ -93,7 +98,30 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
 
     const lines: string[] = [headers.join('\t')];
 
-    const isNoneVal = (val?: string) => !val || val === 'なし' || val === '無し' || val === '無' || val === 'none' || val === '-' || val === 'FALSE' || val === 'false';
+    // 1. オープニング（集合・機材セッティング枠）
+    if (result.eventStartTime && result.openingEndTime && result.eventStartTime !== result.openingEndTime) {
+      const openRow = [
+        '-',
+        result.eventStartTime,
+        result.openingEndTime,
+        '準備',
+        '',
+        '',
+        '🎪 集合・機材セッティング・オープニング',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '音出し・出欠確認',
+        ''
+      ];
+      lines.push(openRow.join('\t'));
+    }
 
     result.schedule.forEach((item, idx) => {
       const s = item.song;
@@ -148,13 +176,13 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
 
       if (item.isBreakAfter) {
         const breakRow = [
-          '',
+          '-',
           item.endTime,
           '',
           '休憩',
           '',
           '',
-          '☕ 休憩・インターバル',
+          '☕ 休憩・インターバル（セット転換＆進行調整）',
           '',
           '',
           '',
@@ -164,12 +192,37 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
           '',
           '',
           '',
-          'セット転換・進行調整',
+          '',
           ''
         ];
         lines.push(breakRow.join('\t'));
       }
     });
+
+    // 2. エンディング（完全撤収枠）
+    if (result.songsEndTime && result.eventEndTime) {
+      const endRow = [
+        '-',
+        result.songsEndTime,
+        result.eventEndTime,
+        '撤収',
+        '',
+        '',
+        '🏁 全曲演奏終了・片付け・完全撤収',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        result.isExtended ? '予定時間より延長' : '完全撤収',
+        ''
+      ];
+      lines.push(endRow.join('\t'));
+    }
 
     return lines.join('\n');
   }, [result]);
@@ -178,7 +231,12 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
   const generatedText = useMemo(() => {
     if (!result) return '';
 
-    let text = "📋 【タイムテーブル】\n\n";
+    let text = "📋 【セッションタイムテーブル】\n\n";
+
+    if (result.eventStartTime && result.openingEndTime && result.eventStartTime !== result.openingEndTime) {
+      text += `🎪 ${result.eventStartTime}〜${result.openingEndTime} 【集合・機材セッティング・オープニング】\n\n`;
+    }
+
     result.schedule.forEach((item, idx) => {
       const s = item.song;
       text += `【${idx + 1}】 ${item.startTime}〜${item.endTime}\n`;
@@ -211,6 +269,10 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
         text += `\n`;
       }
     });
+
+    if (result.songsEndTime && result.eventEndTime) {
+      text += `🏁 ${result.songsEndTime}〜${result.eventEndTime} 【全曲演奏終了・片付け・完全撤収】\n`;
+    }
 
     return text;
   }, [result]);
@@ -278,8 +340,28 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
 
       {result && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {/* スコア・違反サマリー */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* スコア・タイムラインサマリー */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* イベント全体タイムライン */}
+            <div className="bg-slate-950/60 rounded-2xl p-4 border border-indigo-500/30 flex flex-col justify-center space-y-1">
+              <span className="text-xs text-indigo-400 font-semibold flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" /> イベント全体時間
+              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-bold font-mono text-slate-100">
+                  {result.eventStartTime || result.schedule[0]?.startTime} - {result.eventEndTime || result.schedule[result.schedule.length - 1]?.endTime}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-400">
+                1曲目開始: {result.openingEndTime || result.schedule[0]?.startTime} ｜ 演奏終了: {result.songsEndTime || result.schedule[result.schedule.length - 1]?.endTime}
+              </span>
+              {result.isExtended && (
+                <span className="inline-flex items-center text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-medium mt-1">
+                  ⚠️ 予定終了時刻を自動延長
+                </span>
+              )}
+            </div>
+
             <div className="bg-slate-950/60 rounded-2xl p-4 border border-slate-800 flex flex-col items-center justify-center">
               <span className="text-3xl font-extrabold text-slate-100">{result.score}</span>
               <span className="text-xs text-slate-400 mt-1">ペナルティスコア (0が理想)</span>
@@ -424,6 +506,26 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-950">
+                    {/* オープニング枠 */}
+                    {result.eventStartTime && result.openingEndTime && result.eventStartTime !== result.openingEndTime && (
+                      <tr className="bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300">
+                        <td className="sticky left-0 z-10 bg-indigo-950 px-2.5 py-3 text-center font-mono font-bold text-indigo-400">
+                          -
+                        </td>
+                        <td className="sticky left-10 z-10 bg-indigo-950 px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px] border-r border-indigo-500/30 shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-indigo-200">
+                          {result.eventStartTime} - {result.openingEndTime}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                            準備
+                          </span>
+                        </td>
+                        <td colSpan={7} className="px-3 py-3 font-bold text-slate-100 text-xs">
+                          🎪 集合・機材セッティング・オープニング（音出し・出欠確認）
+                        </td>
+                      </tr>
+                    )}
+
                     {result.schedule.map((item, idx) => {
                       const s = item.song;
                       const category = s.category || (s.isAssignment ? '課題曲' : (s.isSession ? 'セッション' : '通常'));
@@ -532,6 +634,33 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                         </React.Fragment>
                       );
                     })}
+
+                    {/* エンディング枠 */}
+                    {result.songsEndTime && result.eventEndTime && (
+                      <tr className="bg-purple-950/30 border-t border-purple-500/30 text-purple-300">
+                        <td className="sticky left-0 z-10 bg-purple-950 px-2.5 py-3 text-center font-mono font-bold text-purple-400">
+                          -
+                        </td>
+                        <td className="sticky left-10 z-10 bg-purple-950 px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px] border-r border-purple-500/30 shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-purple-200">
+                          {result.songsEndTime} - {result.eventEndTime}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                            撤収
+                          </span>
+                        </td>
+                        <td colSpan={7} className="px-3 py-3 font-bold text-slate-100 text-xs">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span>🏁 全曲演奏終了・片付け・写真撮影・完全撤収</span>
+                            {result.isExtended && (
+                              <span className="text-[10px] font-normal bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded">
+                                ⚠️ 予定時刻を超過したため自動延長
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

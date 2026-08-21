@@ -19,6 +19,9 @@ export default function Home() {
   
   const [config, setConfig] = useState<SessionConfig>({
     startTime: '13:00',
+    openingMinutes: 15,
+    targetEndTime: '18:00',
+    closingMinutes: 15,
     defaultPlayMinutes: 5,
     transitionMinutes: 10,
     breakIntervalSongs: 5,

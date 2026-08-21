@@ -4,6 +4,10 @@ import { ScheduledSong } from '../types';
 export interface SharedScheduleData {
   title?: string;
   updatedAt: string;
+  eventStartTime?: string;
+  openingEndTime?: string;
+  eventEndTime?: string;
+  isExtended?: boolean;
   schedule: {
     startTime: string;
     endTime: string;
@@ -44,15 +48,32 @@ type CompactSong = [
 
 interface CompactPayload {
   t: string; // title
+  est?: string; // eventStartTime
+  oet?: string; // openingEndTime
+  eet?: string; // eventEndTime
+  ext?: number; // isExtended (1 or 0)
   s: CompactSong[]; // schedule
 }
 
 /**
  * スケジュールデータを URL-Safe かつ QRコード制限（約500〜1000文字以内）に収まる超小型データにエンコード
  */
-export function encodeScheduleToUrl(schedule: ScheduledSong[], sessionTitle?: string): string {
+export function encodeScheduleToUrl(
+  schedule: ScheduledSong[], 
+  sessionTitle?: string,
+  timeline?: {
+    eventStartTime?: string;
+    openingEndTime?: string;
+    eventEndTime?: string;
+    isExtended?: boolean;
+  }
+): string {
   const compactPayload: CompactPayload = {
     t: sessionTitle || '軽音セッション タイムテーブル',
+    est: timeline?.eventStartTime,
+    oet: timeline?.openingEndTime,
+    eet: timeline?.eventEndTime,
+    ext: timeline?.isExtended ? 1 : 0,
     s: schedule.map(item => {
       const s = item.song;
       const compact: CompactSong = [
@@ -87,12 +108,16 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
     if (!jsonStr) return null;
     const parsed = JSON.parse(jsonStr);
 
-    // 新形式 (CompactPayload: { t, s }) の判定
+    // 新形式 (CompactPayload: { t, s, est, oet, eet, ext }) の判定
     if (parsed && Array.isArray(parsed.s)) {
       const compact = parsed as CompactPayload;
       return {
         title: compact.t,
         updatedAt: new Date().toISOString(),
+        eventStartTime: compact.est,
+        openingEndTime: compact.oet,
+        eventEndTime: compact.eet,
+        isExtended: compact.ext === 1,
         schedule: compact.s.map(c => ({
           startTime: c[0],
           endTime: c[1],

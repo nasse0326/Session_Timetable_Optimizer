@@ -203,6 +203,12 @@ function ParticipantViewContent() {
         </h1>
         <p className="text-xs text-slate-400">
           全 {data.schedule.length} 曲 ｜ 参加メンバー {allMembers.length} 名
+          {data.eventStartTime && data.eventEndTime && (
+            <span className="block mt-1 text-indigo-300 font-mono">
+              🕒 イベント時間: {data.eventStartTime} 〜 {data.eventEndTime}
+              {data.isExtended && <span className="ml-1 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-sans">自動延長</span>}
+            </span>
+          )}
         </p>
       </header>
 
@@ -310,6 +316,26 @@ function ParticipantViewContent() {
       {viewMode === 'card' ? (
         /* スマホ向けカード表示 */
         <div className="space-y-3">
+          {/* 集合・セッティング・オープニング枠 */}
+          {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
+            <div className="rounded-2xl p-4 bg-indigo-950/30 border border-indigo-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm">
+                  🎪
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-100">
+                    集合・機材セッティング・オープニング
+                  </h3>
+                  <p className="text-[11px] text-slate-400">音出し・進行確認・出欠確認</p>
+                </div>
+              </div>
+              <div className="font-mono text-xs font-bold text-indigo-300 bg-indigo-950/80 px-2.5 py-1 rounded-lg border border-indigo-500/30 shrink-0">
+                {data.eventStartTime} - {data.openingEndTime}
+              </div>
+            </div>
+          )}
+
           {filteredSchedule.map((item, idx) => {
             const s = item.song;
             const isUserSong = selectedMember && s.members.some(m => m.name === selectedMember);
@@ -410,6 +436,26 @@ function ParticipantViewContent() {
               </React.Fragment>
             );
           })}
+
+          {/* 全曲終了・完全撤収枠 */}
+          {!selectedMember && data.eventEndTime && (
+            <div className="rounded-2xl p-4 bg-purple-950/30 border border-purple-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center font-bold text-sm">
+                  🏁
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-100">
+                    全曲演奏終了・片付け・写真撮影・完全撤収
+                  </h3>
+                  <p className="text-[11px] text-slate-400">機材撤収・完全退館</p>
+                </div>
+              </div>
+              <div className="font-mono text-xs font-bold text-purple-300 bg-purple-950/80 px-2.5 py-1 rounded-lg border border-purple-500/30 shrink-0">
+                〜 {data.eventEndTime}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* 表表示 */
@@ -426,6 +472,25 @@ function ParticipantViewContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 bg-slate-950">
+              {/* オープニング枠 */}
+              {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
+                <tr className="bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300">
+                  <td className="sticky left-0 z-10 bg-indigo-950 px-2.5 py-3 text-center font-mono font-bold text-indigo-400">
+                    -
+                  </td>
+                  <td className="sticky left-10 z-10 bg-indigo-950 px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px] border-r border-indigo-500/30 shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-indigo-200">
+                    {data.eventStartTime} - {data.openingEndTime}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                      準備
+                    </span>
+                  </td>
+                  <td colSpan={3} className="px-3 py-3 font-bold text-slate-100 text-xs">
+                    🎪 集合・機材セッティング・オープニング（音出し・出欠確認）
+                  </td>
+                </tr>
+              )}
               {filteredSchedule.map((item, idx) => {
                 const s = item.song;
                 const isUserSong = selectedMember && s.members.some(m => m.name === selectedMember);
@@ -509,6 +574,26 @@ function ParticipantViewContent() {
                   </React.Fragment>
                 );
               })}
+
+              {/* 全曲終了・完全撤収枠 */}
+              {!selectedMember && data.eventEndTime && (
+                <tr className="bg-purple-950/30 border-t border-purple-500/30 text-purple-300">
+                  <td className="sticky left-0 z-10 bg-purple-950 px-2.5 py-3 text-center font-mono font-bold text-purple-400">
+                    -
+                  </td>
+                  <td className="sticky left-10 z-10 bg-purple-950 px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px] border-r border-purple-500/30 shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-purple-200">
+                    〜 {data.eventEndTime}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                      撤収
+                    </span>
+                  </td>
+                  <td colSpan={3} className="px-3 py-3 font-bold text-slate-100 text-xs">
+                    🏁 全曲演奏終了・片付け・写真撮影・完全撤収
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

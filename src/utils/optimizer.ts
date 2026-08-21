@@ -15,7 +15,8 @@ export function generateSchedule(
   songs: Song[],
   config: SessionConfig
 ): ScheduledSong[] {
-  let currentMinutes = parseTimeStrToMinutes(config.startTime);
+  const opening = config.openingMinutes ?? 0;
+  let currentMinutes = parseTimeStrToMinutes(config.startTime) + opening;
   const schedule: ScheduledSong[] = [];
 
   const partSize = Math.ceil(songs.length / Math.max(1, config.numberOfParts));
@@ -298,9 +299,34 @@ export function evaluateSchedule(
     }
   }
 
+  const eventStartMins = parseTimeStrToMinutes(config.startTime);
+  const opening = config.openingMinutes ?? 0;
+  const openingEndMins = eventStartMins + opening;
+  const songsEndMins = schedule.length > 0 
+    ? parseTimeStrToMinutes(schedule[schedule.length - 1].endTime) 
+    : openingEndMins;
+  
+  const closing = config.closingMinutes ?? 0;
+  let finalEndMins = songsEndMins + closing;
+  let isExtended = false;
+
+  if (config.targetEndTime) {
+    const targetEndMins = parseTimeStrToMinutes(config.targetEndTime);
+    if (finalEndMins > targetEndMins) {
+      isExtended = true;
+    } else {
+      finalEndMins = targetEndMins;
+    }
+  }
+
   return {
     score,
     schedule,
+    eventStartTime: formatMinutesToStr(eventStartMins),
+    openingEndTime: formatMinutesToStr(openingEndMins),
+    songsEndTime: formatMinutesToStr(songsEndMins),
+    eventEndTime: formatMinutesToStr(finalEndMins),
+    isExtended,
     totalViolations: violations
   };
 }

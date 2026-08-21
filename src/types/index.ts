@@ -36,6 +36,10 @@ export interface SessionConfig {
   breakIntervalSongs: number; // ※従来の機能（後方互換用）
   breakMinutes: number;
   
+  openingMinutes?: number;   // 集合・機材セッティング・オープニング時間（分）
+  targetEndTime?: string;    // 希望終了時刻（例: '18:00'）
+  closingMinutes?: number;   // 演奏終了後の片付け・完全撤収時間（分）
+  
   mode: 'session' | 'live';
   numberOfParts: number; // 1, 2, 3, 4部構成
   fixedTopperId?: string;
@@ -63,6 +67,11 @@ export interface ScheduledSong {
 export interface OptimizationResult {
   score: number;
   schedule: ScheduledSong[];
+  eventStartTime?: string;   // イベント開始・集合時刻（例: "13:00"）
+  openingEndTime?: string;   // 1曲目開始直前・セッティング完了時刻（例: "13:15"）
+  songsEndTime?: string;     // 最終曲の演奏終了時刻（例: "17:45"）
+  eventEndTime?: string;     // イベント完全撤収・終了時刻（例: "18:00"）
+  isExtended?: boolean;      // targetEndTimeを超えて自動延長されたかどうかのフラグ
   totalViolations: {
     timeConstraint: number;
     drumTransition: number;
