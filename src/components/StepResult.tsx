@@ -64,8 +64,8 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
       'バンド名',
       'アーティスト名',
       '曲名',
-      '持込',
       'レンタル',
+      '持込',
       'Vo',
       'Gt1',
       'Gt2',
@@ -78,6 +78,8 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
     ];
 
     const lines: string[] = [headers.join('\t')];
+
+    const isNoneVal = (val?: string) => !val || val === 'なし' || val === '無し' || val === '無' || val === 'none' || val === '-' || val === 'FALSE' || val === 'false';
 
     result.schedule.forEach((item, idx) => {
       const s = item.song;
@@ -102,10 +104,10 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
       const category = s.category || (s.isAssignment ? '課題曲' : (s.isSession ? 'セッション' : '通常'));
       const band = s.bandName || '';
       const artist = s.artist || '';
-      const bring = s.bring || (s.requiresLongSetup ? '転換長' : '');
-      const rental = s.rental || '';
+      const rental = isNoneVal(s.rental) ? '' : (s.rental || '');
+      const bring = (isNoneVal(s.bring) ? '' : (s.bring || '')) || (s.requiresLongSetup ? '転換長' : '');
       const notes = (s.rawNotes || '').replace(/[\t\r\n]+/g, ' ');
-      const conflicts = item.conflicts.length > 0 ? item.conflicts.join('; ') : '良好';
+      const conflicts = item.conflicts.length > 0 ? item.conflicts.join('; ') : '';
 
       const row = [
         (idx + 1).toString(),
@@ -115,8 +117,8 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
         band,
         artist,
         s.title,
-        bring,
         rental,
+        bring,
         vo,
         gt1,
         gt2,
@@ -132,24 +134,24 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
 
       if (item.isBreakAfter) {
         const breakRow = [
-          '-',
+          '',
           item.endTime,
-          '-',
+          '',
           '休憩',
-          '-',
-          '-',
+          '',
+          '',
           '☕ 休憩・インターバル',
-          '-',
-          '-',
-          '-',
-          '-',
-          '-',
-          '-',
-          '-',
-          '-',
-          '-',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
           'セット転換・進行調整',
-          '-'
+          ''
         ];
         lines.push(breakRow.join('\t'));
       }
