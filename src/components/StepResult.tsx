@@ -2,10 +2,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { OptimizationResult } from '../types';
+import { encodeScheduleToUrl } from '../utils/share';
+import SharePublishModal from './SharePublishModal';
 import { 
   Play, Copy, Check, AlertTriangle, Coffee, Loader2, 
   Calendar, Sparkles, FileSpreadsheet, MessageSquare, 
-  Music, Table, Download, Eye
+  Music, Table, Download, Eye, Share2, Smartphone
 } from 'lucide-react';
 
 interface StepResultProps {
@@ -51,6 +53,18 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
   const [outputTab, setOutputTab] = useState<'table' | 'tsv' | 'text'>('table');
   const [copiedTsv, setCopiedTsv] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
+
+  // 確定共有モーダルの状態
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+
+  const handlePublishShare = () => {
+    if (!result || result.schedule.length === 0) return;
+    const compressed = encodeScheduleToUrl(result.schedule);
+    const url = `${window.location.origin}/view#d=${compressed}`;
+    setShareUrl(url);
+    setIsShareModalOpen(true);
+  };
 
   // TSVテキストの生成（Excel / Googleスプレッドシート貼付用）
   const generatedTsv = useMemo(() => {
@@ -282,6 +296,33 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
               </span>
               <span className="text-xs text-slate-400 mt-1">時間制約違反</span>
             </div>
+          </div>
+
+          {/* 🌟 最終確定・参加者共有URL発行アクションバー */}
+          <div className="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-indigo-950/40 border border-emerald-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                  <span>参加者用Webタイムテーブルの公開</span>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                </p>
+                <p className="text-xs text-slate-400">
+                  タイムテーブルが完成したら、参加者がスマホで確認できる専用URL・QRコードを発行します
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handlePublishShare}
+              className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-lg shadow-emerald-600/20 hover:shadow-emerald-600/35 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>タイムテーブルを確定して共有URLを発行</span>
+            </button>
           </div>
 
           {/* 出力結果コンテナ */}
@@ -538,6 +579,16 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
             )}
           </div>
         </div>
+      )}
+
+      {/* 確定共有モーダル */}
+      {result && (
+        <SharePublishModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          shareUrl={shareUrl}
+          songCount={result.schedule.length}
+        />
       )}
     </div>
   );
