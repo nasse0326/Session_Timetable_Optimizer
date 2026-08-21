@@ -31,6 +31,7 @@ export default function SharePublishModal({
 }: SharePublishModalProps) {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedLineMessage, setCopiedLineMessage] = useState(false);
+  const [qrError, setQrError] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen) return null;
@@ -122,21 +123,29 @@ ${shareUrl}`;
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
             {/* QRコード表示 */}
             <div className="flex flex-col items-center justify-center p-3 bg-slate-900 rounded-xl border border-slate-800/80">
-              <div ref={qrRef} className="p-2.5 bg-white rounded-xl shadow-inner mb-2">
-                <QRCodeCanvas 
-                  value={shareUrl} 
-                  size={140}
-                  level="M"
-                  marginSize={0}
-                />
+              <div ref={qrRef} className="p-2.5 bg-white rounded-xl shadow-inner mb-2 flex items-center justify-center min-w-[140px] min-h-[140px]">
+                {shareUrl.length > 3000 ? (
+                  <div className="text-[10px] text-slate-700 text-center max-w-[130px] font-medium leading-relaxed">
+                    曲数が多いためURLコピーをご利用ください
+                  </div>
+                ) : (
+                  <QRCodeCanvas 
+                    value={shareUrl} 
+                    size={140}
+                    level="L"
+                    marginSize={0}
+                  />
+                )}
               </div>
-              <button
-                onClick={handleDownloadQr}
-                className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 hover:bg-slate-800 px-3 py-1 rounded-lg transition-colors font-medium"
-              >
-                <Download className="w-3.5 h-3.5" />
-                QR画像を保存
-              </button>
+              {shareUrl.length <= 3000 && (
+                <button
+                  onClick={handleDownloadQr}
+                  className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 hover:bg-slate-800 px-3 py-1 rounded-lg transition-colors font-medium"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  QR画像を保存
+                </button>
+              )}
             </div>
 
             {/* 説明とプレビュー */}

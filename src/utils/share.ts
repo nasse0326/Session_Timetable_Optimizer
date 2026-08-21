@@ -26,47 +26,101 @@ export interface SharedScheduleData {
   }[];
 }
 
+// 超コンパクトミニファイ構造
+// [startTime, endTime, title, category, band, artist, rental, bring, [[part, name], ...], isBreak, rawNotes]
+type CompactSong = [
+  string, // 0: startTime
+  string, // 1: endTime
+  string, // 2: title
+  string, // 3: category
+  string, // 4: band
+  string, // 5: artist
+  string, // 6: rental
+  string, // 7: bring
+  [string, string][], // 8: members [[part, name], ...]
+  number, // 9: isBreakAfter (1 or 0)
+  string? // 10: rawNotes (optional)
+];
+
+interface CompactPayload {
+  t: string; // title
+  s: CompactSong[]; // schedule
+}
+
 /**
- * スケジュールデータを URL-Safe な圧縮文字列にエンコード
+ * スケジュールデータを URL-Safe かつ QRコード制限（約500〜1000文字以内）に収まる超小型データにエンコード
  */
 export function encodeScheduleToUrl(schedule: ScheduledSong[], sessionTitle?: string): string {
-  const data: SharedScheduleData = {
-    title: sessionTitle || '軽音セッション タイムテーブル',
-    updatedAt: new Date().toISOString(),
-    schedule: schedule.map(item => ({
-      startTime: item.startTime,
-      endTime: item.endTime,
-      isBreakAfter: item.isBreakAfter,
-      conflicts: item.conflicts.length > 0 ? item.conflicts : undefined,
-      song: {
-        title: item.song.title,
-        category: item.song.category,
-        bandName: item.song.bandName,
-        artist: item.song.artist,
-        rental: item.song.rental,
-        bring: item.song.bring,
-        rawNotes: item.song.rawNotes,
-        requiresLongSetup: item.song.requiresLongSetup,
-        members: item.song.members.map(m => ({
-          part: m.part,
-          name: m.name
-        }))
+  const compactPayload: CompactPayload = {
+    t: sessionTitle || '軽音セッション タイムテーブル',
+    s: schedule.map(item => {
+      const s = item.song;
+      const compact: CompactSong = [
+        item.startTime,
+        item.endTime,
+        s.title,
+        s.category || '',
+        s.bandName || '',
+        s.artist || '',
+        s.rental || '',
+        s.bring || '',
+        s.members.map(m => [m.part, m.name]),
+        item.isBreakAfter ? 1 : 0
+      ];
+      if (s.rawNotes) {
+        compact.push(s.rawNotes);
       }
-    }))
+      return compact;
+    })
   };
 
-  const jsonStr = JSON.stringify(data);
+  const jsonStr = JSON.stringify(compactPayload);
   return LZString.compressToEncodedURIComponent(jsonStr);
 }
 
 /**
- * URL のハッシュ文字列からスケジュールデータを復元
+ * URL のハッシュ文字列からスケジュールデータを復元（新旧両対応）
  */
 export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData | null {
   try {
     const jsonStr = LZString.decompressFromEncodedURIComponent(compressedStr);
     if (!jsonStr) return null;
-    return JSON.parse(jsonStr) as SharedScheduleData;
+    const parsed = JSON.parse(jsonStr);
+
+    // 新形式 (CompactPayload: { t, s }) の判定
+    if (parsed && Array.isArray(parsed.s)) {
+      const compact = parsed as CompactPayload;
+      return {
+        title: compact.t,
+        updatedAt: new Date().toISOString(),
+        schedule: compact.s.map(c => ({
+          startTime: c[0],
+          endTime: c[1],
+          isBreakAfter: c[9] === 1,
+          song: {
+            title: c[2],
+            category: c[3] || undefined,
+            bandName: c[4] || undefined,
+            artist: c[5] || undefined,
+            rental: c[6] || undefined,
+            bring: c[7] || undefined,
+            requiresLongSetup: Boolean(c[6] || c[7] || c[10]?.includes('転換長')),
+            rawNotes: c[10] || undefined,
+            members: (c[8] || []).map(m => ({
+              part: m[0],
+              name: m[1]
+            }))
+          }
+        }))
+      };
+    }
+
+    // 旧形式 (SharedScheduleData) の互換フォールバック
+    if (parsed && Array.isArray(parsed.schedule)) {
+      return parsed as SharedScheduleData;
+    }
+
+    return null;
   } catch (e) {
     console.error('Failed to decode schedule from URL', e);
     return null;

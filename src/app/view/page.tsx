@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { decodeScheduleFromUrl, SharedScheduleData } from '@/utils/share';
 import AdInlineBanner from '@/components/AdInlineBanner';
 import { 
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function ParticipantViewPage() {
+function ParticipantViewContent() {
   const [data, setData] = useState<SharedScheduleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,38 +28,40 @@ export default function ParticipantViewPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
-  // URLハッシュからデータを復元
+  // URLハッシュまたはパラメータからデータを復元
   useEffect(() => {
     const parseUrlData = () => {
       try {
+        if (typeof window === 'undefined') return;
+
+        let compressedStr: string | null = null;
+
+        // 1. ハッシュ(#d=...)を優先チェック
         const hash = window.location.hash;
-        if (!hash || !hash.includes('d=')) {
-          // クエリパラメータもチェック
+        if (hash && hash.includes('d=')) {
+          const match = hash.match(/[#&]d=([^&]+)/);
+          if (match && match[1]) {
+            compressedStr = decodeURIComponent(match[1]);
+          }
+        }
+
+        // 2. クエリパラメータ(?d=...)もチェック
+        if (!compressedStr && window.location.search) {
           const params = new URLSearchParams(window.location.search);
           const dParam = params.get('d');
           if (dParam) {
-            const decoded = decodeScheduleFromUrl(dParam);
-            if (decoded && decoded.schedule) {
-              setData(decoded);
-              setLoading(false);
-              return;
-            }
+            compressedStr = dParam;
           }
+        }
+
+        if (!compressedStr) {
           setError('有効なタイムテーブルデータが見つかりませんでした。');
           setLoading(false);
           return;
         }
 
-        const match = hash.match(/[#&]d=([^&]+)/);
-        if (!match) {
-          setError('URLのデータ形式が不正です。');
-          setLoading(false);
-          return;
-        }
-
-        const compressedStr = match[1];
         const decoded = decodeScheduleFromUrl(compressedStr);
-        if (!decoded || !decoded.schedule) {
+        if (!decoded || !decoded.schedule || decoded.schedule.length === 0) {
           setError('データの復元に失敗しました。URLが途中で切れている可能性があります。');
           setLoading(false);
           return;
@@ -509,5 +511,20 @@ export default function ParticipantViewPage() {
         </Link>
       </footer>
     </main>
+  );
+}
+
+export default function ParticipantViewPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen flex items-center justify-center p-4 bg-slate-950 font-sans text-slate-200">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-400">タイムテーブルを読み込み中...</p>
+        </div>
+      </main>
+    }>
+      <ParticipantViewContent />
+    </Suspense>
   );
 }
