@@ -85,7 +85,7 @@ export default function Home() {
   }, [pendingResult]);
 
   return (
-    <main className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-[1360px] mx-auto font-sans">
+    <main className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-[1500px] mx-auto font-sans">
       <header className="mb-8 text-center space-y-3">
         <div className="inline-flex items-center justify-center p-3 bg-indigo-500/10 rounded-2xl mb-1">
           <Music2 className="w-9 h-9 text-indigo-400" />
@@ -98,10 +98,10 @@ export default function Home() {
         </p>
       </header>
 
-      {/* 画面幅 1400px 以上では右側に固定追従サイドバー、1400px 未満では 1 カラム＋インライン広告 */}
-      <div className="flex flex-col min-[1400px]:flex-row items-start gap-8 justify-center">
+      {/* 画面幅 1200px (xl) 以上では右側に固定追従サイドバー、未満では 1 カラム＋インライン広告 */}
+      <div className="flex flex-col xl:flex-row items-start gap-8 justify-center">
         {/* メインツール領域 */}
-        <div className="flex-1 w-full max-w-4xl min-[1400px]:max-w-4xl mx-auto min-[1400px]:mx-0 space-y-8">
+        <div className="flex-1 w-full min-w-0 space-y-8">
           <StepInput
             tsv={tsv}
             onTsvChange={setTsv}
@@ -109,8 +109,8 @@ export default function Home() {
             constraints={constraints}
           />
 
-          {/* 1400px 未満（ノートPC・スマホ）でのみ表示されるインライン広告（Step 1とStep 2の間） */}
-          <div className="block min-[1400px]:hidden">
+          {/* xl 未満（タブレット・スマホ）でのみ表示されるインライン広告（Step 1とStep 2の間） */}
+          <div className="block xl:hidden">
             <AdInlineBanner variant="compact" />
           </div>
 
@@ -129,14 +129,14 @@ export default function Home() {
             />
           </div>
 
-          {/* 1400px 未満（ノートPC・スマホ）でのみ表示される最下部インライン広告 */}
-          <div className="block min-[1400px]:hidden">
+          {/* xl 未満（タブレット・スマホ）でのみ表示される最下部インライン広告 */}
+          <div className="block xl:hidden">
             <AdInlineBanner variant="standard" />
           </div>
         </div>
 
-        {/* 1400px 以上の大画面でのみ右側に表示される固定追従サイドバー */}
-        <div className="hidden min-[1400px]:block">
+        {/* xl 以上の大画面・デスクトップで右側に表示される固定追従（フロート）サイドバー */}
+        <div className="hidden xl:block shrink-0 sticky top-6">
           <AdSidebar />
         </div>
       </div>
