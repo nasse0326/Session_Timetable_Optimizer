@@ -387,9 +387,9 @@ function ParticipantViewContent() {
                   </div>
 
                   {/* 機材情報 */}
-                  {(s.bring || s.rental || s.requiresLongSetup) && (
+                  {(s.bring || s.rental || (s.requiresLongSetup && !s.bring && !s.rental)) && (
                     <div className="mb-2.5 flex flex-wrap gap-2 text-[11px]">
-                      {s.requiresLongSetup && (
+                      {s.requiresLongSetup && !s.bring && !s.rental && (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-[10px]">
                           ⚡ 転換長
                         </span>
@@ -553,8 +553,8 @@ function ParticipantViewContent() {
                         <div className="space-y-1">
                           {s.bring && <div>持込: {s.bring}</div>}
                           {s.rental && <div>レンタル: {s.rental}</div>}
-                          {!s.bring && !s.rental && <span className="text-slate-600">-</span>}
-                          {s.requiresLongSetup && (
+                          {!s.bring && !s.rental && !s.requiresLongSetup && <span className="text-slate-600">-</span>}
+                          {s.requiresLongSetup && !s.bring && !s.rental && (
                             <div>
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-bold">
                                 ⚡ 転換長

@@ -147,7 +147,7 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
       const band = s.bandName || '';
       const artist = s.artist || '';
       const rental = s.rental || '';
-      const bring = s.bring || (s.requiresLongSetup ? '転換長' : '');
+      const bring = s.bring || '';
       const notes = (s.rawNotes || '').replace(/[\t\r\n]+/g, ' ');
       const conflicts = item.conflicts.length > 0 ? item.conflicts.join('; ') : '';
 
@@ -570,7 +570,7 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
                             <td className="px-3 py-3 text-slate-300 text-[11px] break-words">
                               <div className="space-y-1">
                                 {s.bring ? <span>{s.bring}</span> : <span className="text-slate-600">-</span>}
-                                {s.requiresLongSetup && (
+                                {s.requiresLongSetup && !s.bring && !s.rental && (
                                   <div>
                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-bold">
                                       ⚡ 転換長

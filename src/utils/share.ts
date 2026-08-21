@@ -111,6 +111,8 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
     // 新形式 (CompactPayload: { t, s, est, oet, eet, ext }) の判定
     if (parsed && Array.isArray(parsed.s)) {
       const compact = parsed as CompactPayload;
+      const isNoneVal = (val?: string) => !val || val === 'なし' || val === '無し' || val === '無' || val === 'none' || val === '-' || val === 'FALSE' || val === 'false';
+
       return {
         title: compact.t,
         updatedAt: new Date().toISOString(),
@@ -118,25 +120,32 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
         openingEndTime: compact.oet,
         eventEndTime: compact.eet,
         isExtended: compact.ext === 1,
-        schedule: compact.s.map(c => ({
-          startTime: c[0],
-          endTime: c[1],
-          isBreakAfter: c[9] === 1,
-          song: {
-            title: c[2],
-            category: c[3] || undefined,
-            bandName: c[4] || undefined,
-            artist: c[5] || undefined,
-            rental: c[6] || undefined,
-            bring: c[7] || undefined,
-            requiresLongSetup: Boolean(c[6] || c[7] || c[10]?.includes('転換長')),
-            rawNotes: c[10] || undefined,
-            members: (c[8] || []).map(m => ({
-              part: m[0],
-              name: m[1]
-            }))
-          }
-        }))
+        schedule: compact.s.map(c => {
+          const rentalVal = !isNoneVal(c[6]) ? c[6] : undefined;
+          const bringVal = !isNoneVal(c[7]) ? c[7] : undefined;
+          const hasLongNote = Boolean(c[10]?.includes('転換長') || c[10]?.includes('セッティング長'));
+          const requiresLongSetup = Boolean(rentalVal || bringVal || hasLongNote);
+
+          return {
+            startTime: c[0],
+            endTime: c[1],
+            isBreakAfter: c[9] === 1,
+            song: {
+              title: c[2],
+              category: c[3] || undefined,
+              bandName: c[4] || undefined,
+              artist: c[5] || undefined,
+              rental: rentalVal,
+              bring: bringVal,
+              requiresLongSetup,
+              rawNotes: c[10] || undefined,
+              members: (c[8] || []).map(m => ({
+                part: m[0],
+                name: m[1]
+              }))
+            }
+          };
+        })
       };
     }
 

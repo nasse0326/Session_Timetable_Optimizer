@@ -255,9 +255,12 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
     // Check rental/bring or notes for long setup
     let requiresLongSetup = false;
     const isNoneVal = (val?: string) => !val || val === 'なし' || val === '無し' || val === '無' || val === 'none' || val === '-' || val === 'FALSE' || val === 'false';
-    if (rentalIdx !== -1 && row[rentalIdx] && !isNoneVal(row[rentalIdx])) requiresLongSetup = true;
-    if (bringIdx !== -1 && row[bringIdx] && !isNoneVal(row[bringIdx])) requiresLongSetup = true;
-    if (rawNotes && (rawNotes.includes('転換長') || rawNotes.includes('セッティング長') || rawNotes.includes('セッティング') || rawNotes.includes('持込') || rawNotes.includes('レンタル'))) {
+    const cleanRental = !isNoneVal(rentalVal) ? rentalVal : undefined;
+    const cleanBring = !isNoneVal(bringVal) ? bringVal : undefined;
+
+    if (cleanRental) requiresLongSetup = true;
+    if (cleanBring) requiresLongSetup = true;
+    if (rawNotes && (rawNotes.includes('転換長') || rawNotes.includes('セッティング長'))) {
       requiresLongSetup = true;
     }
 
@@ -279,8 +282,8 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
       category: categoryVal || (isAssignment ? '課題曲' : (isSession ? 'セッション' : undefined)),
       bandName: bandNameVal || undefined,
       artist: artistVal || undefined,
-      rental: rentalVal || undefined,
-      bring: bringVal || undefined,
+      rental: cleanRental,
+      bring: cleanBring,
       members,
       rawNotes: rawNotes || undefined,
       isSession,
@@ -300,7 +303,7 @@ export function parseTsv(tsv: string): { songs: Song[]; constraints: MemberConst
             const isFirstTime = item.includes('初参加');
             const prevTopper = item.includes('前回トッパー') || item.includes('前トッパー');
             const prevTori = item.includes('前回トリ') || item.includes('前トリ');
-            const memberLongSetup = item.includes('転換長') || item.includes('セッティング長') || item.includes('セッティング');
+            const memberLongSetup = item.includes('転換長') || item.includes('セッティング長');
 
             const existing = constraintsMap.get(name) || { name, formattedText: '' };
             
