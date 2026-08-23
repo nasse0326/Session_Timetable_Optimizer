@@ -29,15 +29,29 @@ body.light-theme {
 @media print {
   @page {
     size: A4 auto;
-    margin: 10mm 10mm 10mm 10mm;
+    margin: 8mm 8mm 8mm 8mm;
   }
   
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   body {
     background: #ffffff !important;
     background-image: none !important;
     color: #000000 !important;
     padding: 0 !important;
     margin: 0 !important;
+    font-size: 10pt !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: #000000 !important;
   }
 
   .no-print {
@@ -48,38 +62,107 @@ body.light-theme {
     display: block !important;
   }
 
+  /* 印刷用ヘッダーコンテナ */
+  .print-header {
+    display: block !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 2px solid #0f172a !important;
+    color: #000000 !important;
+  }
+
+  .print-header h1 {
+    color: #000000 !important;
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+  }
+
+  .print-header p,
+  .print-header span,
+  .print-header div {
+    color: #334155 !important;
+    font-size: 9pt !important;
+  }
+
+  /* テーブル印刷設定 */
   .print-table {
+    display: block !important;
     width: 100% !important;
     max-height: none !important;
     overflow: visible !important;
     box-shadow: none !important;
-    border: 1px solid #cbd5e1 !important;
+    border: 1px solid #64748b !important;
     background: #ffffff !important;
+    border-radius: 0 !important;
   }
 
   .print-table table {
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 10pt !important;
+    font-size: 9pt !important;
+    color: #000000 !important;
   }
 
-  .print-table th, 
+  .print-table thead {
+    display: table-header-group !important;
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    background: #f1f5f9 !important;
+  }
+
+  .print-table th {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    border: 1px solid #475569 !important;
+    padding: 5px 6px !important;
+    text-align: left !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    font-size: 9pt !important;
+  }
+
   .print-table td {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
     border: 1px solid #94a3b8 !important;
     color: #0f172a !important;
     background: #ffffff !important;
     padding: 4px 6px !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-  }
-
-  .print-table th {
-    background-color: #f1f5f9 !important;
-    font-weight: bold !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    font-size: 8.5pt !important;
   }
 
   .print-table tr {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  /* 休憩行・オープニング行などの印刷色 */
+  .print-table tr.print-break-row td {
+    background-color: #f0fdf4 !important;
+    color: #166534 !important;
+    font-weight: 600 !important;
+  }
+
+  .print-table tr.print-opening-row td {
+    background-color: #eef2ff !important;
+    color: #3730a3 !important;
+    font-weight: 600 !important;
+  }
+
+  .print-table tr.print-closing-row td {
+    background-color: #faf5ff !important;
+    color: #6b21a8 !important;
+    font-weight: 600 !important;
   }
 }

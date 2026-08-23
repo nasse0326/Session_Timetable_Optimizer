@@ -20,8 +20,6 @@ import {
   Moon,
   RotateCcw,
   Check,
-  CheckSquare,
-  Square,
   FileText
 } from 'lucide-react';
 import Link from 'next/link';
@@ -35,9 +33,9 @@ interface ColumnOption {
 }
 
 const COLUMN_OPTIONS: ColumnOption[] = [
-  { key: 'number', label: '#', desc: '曲順番号' },
+  { key: 'number', label: '曲番号 (#)', desc: '曲の演奏順番号' },
   { key: 'time', label: '時間・区分', desc: '演奏時刻と曲カテゴリ' },
-  { key: 'title', label: '曲名 / バンド', desc: '曲名、アーティスト、バンド名' },
+  { key: 'title', label: '曲名 / バンド', desc: '楽曲名・アーティスト・バンド名' },
   { key: 'members', label: '担当メンバー', desc: 'パート別メンバー一覧' },
   { key: 'equipment', label: '機材・備考', desc: '持込・レンタル・転換情報' },
 ];
@@ -314,11 +312,6 @@ function ParticipantViewContent() {
     });
   }, [fullTimeline, selectedMember, searchQuery]);
 
-  // 現在表示されている曲数
-  const matchingSongsCount = useMemo(() => {
-    return filteredTimeline.filter(t => t.type === 'song').length;
-  }, [filteredTimeline]);
-
   // 現在表示されているカラム数（colSpan計算用）
   const visibleColumnCount = useMemo(() => {
     return Object.values(visibleColumns).filter(Boolean).length;
@@ -394,25 +387,255 @@ function ParticipantViewContent() {
     );
   }
 
+  // タイムテーブル（表）のレンダリング関数
+  const renderTableView = (isPrintTableOnly = false) => {
+    return (
+      <div className={`print-table border rounded-2xl overflow-hidden shadow-xl relative ${
+        isPrintTableOnly ? 'hidden print:block' : 'max-h-[700px] overflow-y-auto overflow-x-auto'
+      } ${
+        isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/60'
+      }`}>
+        <table className="w-full text-left text-xs border-collapse">
+          <thead className={`border-b font-bold uppercase shadow-md ${
+            isPrintTableOnly ? '' : 'sticky top-0 z-20'
+          } ${
+            isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-800'
+          }`}>
+            <tr>
+              {visibleColumns.number && (
+                <th className={`px-2.5 py-3 w-10 text-center ${
+                  !isPrintTableOnly && 'sticky left-0 z-30'
+                } ${
+                  isDark ? 'bg-slate-950 text-slate-400' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  #
+                </th>
+              )}
+              {visibleColumns.time && (
+                <th className={`px-3 py-3 min-w-[105px] ${
+                  visibleColumns.number ? 'border-l border-slate-700/50' : ''
+                }`}>
+                  時間 / 区分
+                </th>
+              )}
+              {visibleColumns.title && (
+                <th className="px-3 py-3 min-w-[160px]">曲名 / バンド</th>
+              )}
+              {visibleColumns.members && (
+                <th className="px-3 py-3 min-w-[200px]">担当メンバー</th>
+              )}
+              {visibleColumns.equipment && (
+                <th className="px-3 py-3 min-w-[110px]">機材 / 備考</th>
+              )}
+            </tr>
+          </thead>
+          <tbody className={`divide-y ${isDark ? 'divide-slate-800/60 bg-slate-950' : 'divide-slate-200 bg-white'}`}>
+            {/* オープニング枠 */}
+            {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
+              <tr className={`print-opening-row ${
+                isDark ? 'bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300' : 'bg-indigo-50/80 border-b border-indigo-200 text-indigo-900'
+              }`}>
+                {visibleColumns.number && (
+                  <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'}`}>
+                    -
+                  </td>
+                )}
+                {visibleColumns.time && (
+                  <td className="px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px]">
+                    <div>{data.eventStartTime} - {data.openingEndTime}</div>
+                    <div className="mt-0.5">
+                      <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                        準備
+                      </span>
+                    </div>
+                  </td>
+                )}
+                <td colSpan={Math.max(1, visibleColumnCount - (visibleColumns.number ? 1 : 0) - (visibleColumns.time ? 1 : 0))} className="px-3 py-3 font-bold text-xs">
+                  🎪 集合・機材セッティング・オープニング（音出し・出欠確認）
+                </td>
+              </tr>
+            )}
+
+            {filteredTimeline.map((item) => {
+              if (item.type === 'break') {
+                return (
+                  <tr key={item.id} className={`print-break-row ${
+                    isDark ? 'bg-emerald-950/30 border-y border-emerald-500/30' : 'bg-emerald-50 border-y border-emerald-200'
+                  }`}>
+                    {visibleColumns.number && (
+                      <td className={`px-2.5 py-2.5 text-center font-mono text-emerald-500 dark:text-emerald-400 font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'}`}>
+                        ☕
+                      </td>
+                    )}
+                    {visibleColumns.time && (
+                      <td className="px-3 py-2.5 font-mono whitespace-nowrap font-bold text-xs text-emerald-700 dark:text-emerald-300">
+                        {item.startTime} - {item.endTime}
+                      </td>
+                    )}
+                    <td 
+                      colSpan={Math.max(1, visibleColumnCount - (visibleColumns.number ? 1 : 0) - (visibleColumns.time ? 1 : 0))} 
+                      className={`px-3 py-2.5 font-semibold text-xs ${
+                        isDark ? 'text-emerald-300' : 'text-emerald-800'
+                      }`}
+                    >
+                      ☕ 休憩・インターバル（セット転換＆進行調整）
+                    </td>
+                  </tr>
+                );
+              }
+
+              const s = item.item.song;
+              const isUserSong = selectedMember && s.members.some(m => m.name === selectedMember);
+              const category = s.category || '通常';
+
+              return (
+                <tr 
+                  key={item.id} 
+                  className={`transition-colors group ${
+                    isUserSong 
+                      ? isDark ? 'bg-indigo-950/40 font-medium' : 'bg-indigo-50/90 font-medium'
+                      : isDark ? 'hover:bg-slate-900/60' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  {/* 曲番号 (#) */}
+                  {visibleColumns.number && (
+                    <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'} ${
+                      isUserSong 
+                        ? isDark ? 'bg-indigo-950/80 text-indigo-200' : 'bg-indigo-100 text-indigo-900'
+                        : isDark ? 'bg-slate-950 text-slate-400 group-hover:bg-slate-900' : 'bg-white text-slate-500 group-hover:bg-slate-50'
+                    }`}>
+                      {item.originalIndex + 1}
+                    </td>
+                  )}
+
+                  {/* 時間・カテゴリ（統合） */}
+                  {visibleColumns.time && (
+                    <td className={`px-3 py-3 font-mono whitespace-nowrap font-medium ${
+                      isUserSong 
+                        ? isDark ? 'text-white' : 'text-indigo-950 font-bold'
+                        : isDark ? 'text-slate-200' : 'text-slate-800'
+                    }`}>
+                      <div>{item.item.startTime} - {item.item.endTime}</div>
+                      <div className="mt-1">
+                        <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
+                          {category}
+                        </span>
+                      </div>
+                    </td>
+                  )}
+
+                  {/* 曲名 / バンド */}
+                  {visibleColumns.title && (
+                    <td className="px-3 py-3 break-words">
+                      <div className={`font-bold text-xs flex items-start gap-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                        <Music className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                        <span>{s.title}</span>
+                      </div>
+                      {(s.bandName || s.artist) && (
+                        <div className={`text-[11px] mt-0.5 break-words ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {s.bandName && <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{s.bandName} </span>}
+                          {s.artist && <span>({s.artist})</span>}
+                        </div>
+                      )}
+                    </td>
+                  )}
+
+                  {/* 担当メンバー */}
+                  {visibleColumns.members && (
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {s.members.map((m, mIdx) => (
+                          <span
+                            key={mIdx}
+                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] ${getPartBadgeStyle(m.part)} ${
+                              selectedMember === m.name ? 'ring-2 ring-pink-500 font-bold scale-105' : ''
+                            }`}
+                          >
+                            <span className="font-mono text-[9px] opacity-75">{m.part}</span>
+                            <span>{m.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  )}
+
+                  {/* 機材・備考 */}
+                  {visibleColumns.equipment && (
+                    <td className={`px-3 py-3 text-[11px] break-words ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                      <div className="space-y-0.5">
+                        {s.bring && <div>持込: {s.bring}</div>}
+                        {s.rental && <div>レンタル: {s.rental}</div>}
+                        {!s.bring && !s.rental && !s.requiresLongSetup && <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>-</span>}
+                        {s.requiresLongSetup && !s.bring && !s.rental && (
+                          <div>
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-[9px] font-bold">
+                              ⚡ 転換長
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+
+            {/* 全曲終了・完全撤収枠 */}
+            {!selectedMember && data.eventEndTime && (
+              <tr className={`print-closing-row ${
+                isDark ? 'bg-purple-950/30 border-t border-purple-500/30 text-purple-300' : 'bg-purple-50/80 border-t border-purple-200 text-purple-900'
+              }`}>
+                {visibleColumns.number && (
+                  <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'}`}>
+                    -
+                  </td>
+                )}
+                {visibleColumns.time && (
+                  <td className="px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px]">
+                    <div>〜 {data.eventEndTime}</div>
+                    <div className="mt-0.5">
+                      <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                        撤収
+                      </span>
+                    </div>
+                  </td>
+                )}
+                <td colSpan={Math.max(1, visibleColumnCount - (visibleColumns.number ? 1 : 0) - (visibleColumns.time ? 1 : 0))} className="px-3 py-3 font-bold text-xs">
+                  🏁 全曲演奏終了・片付け・写真撮影・完全撤収
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <main className={`min-h-screen py-6 px-3 sm:px-6 max-w-5xl mx-auto font-sans transition-colors duration-200 pb-20 ${
       isDark ? 'text-slate-200' : 'text-slate-800'
     }`}>
-      {/* 🖨️ 印刷専用ヘッダー（紙面出力時のみ表示） */}
-      <div className="hidden print-only mb-6 border-b-2 border-slate-900 pb-3">
-        <div className="flex justify-between items-end">
+      {/* 🖨️ 印刷専用ヘッダー（紙面出力時のみ確実に表示） */}
+      <div className="hidden print:block print-header">
+        <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold text-black tracking-tight">
               {data.title || '軽音セッション タイムテーブル'}
             </h1>
-            <p className="text-xs text-slate-700 mt-1">
-              全 {data.schedule.length} 曲 ｜ 参加メンバー {allMembers.length} 名
+            <div className="text-xs text-slate-700 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
+              <span>全 {data.schedule.length} 曲</span>
+              <span>参加メンバー {allMembers.length} 名</span>
               {data.eventStartTime && data.eventEndTime && (
-                <span className="ml-3 font-mono font-bold">
+                <span className="font-mono font-bold text-black">
                   時間: {data.eventStartTime} 〜 {data.eventEndTime}
                 </span>
               )}
-            </p>
+              {selectedMember && (
+                <span className="text-indigo-900 font-bold bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                  👤 {selectedMember} さんの出演曲（{selectedMemberSummary?.totalSongs || 0}曲）
+                </span>
+              )}
+            </div>
           </div>
           <div className="text-right text-[10px] text-slate-600 font-mono">
             出力日: {new Date().toLocaleDateString('ja-JP')}
@@ -454,7 +677,7 @@ function ParticipantViewContent() {
         </div>
       </div>
 
-      {/* ヘッダー */}
+      {/* 画面用ヘッダー */}
       <header className="no-print text-center space-y-2 mb-6">
         <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
           isDark 
@@ -612,90 +835,88 @@ function ParticipantViewContent() {
             </button>
           </div>
 
-          {/* 表表示時のカラム選択ドロップダウン */}
-          {viewMode === 'table' && (
-            <div className="relative" ref={columnPickerRef}>
-              <button
-                type="button"
-                onClick={() => setIsColumnPickerOpen(!isColumnPickerOpen)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all shadow-sm ${
-                  isColumnPickerOpen
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : isDark
-                    ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-800'
-                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-                }`}
-                title="表示するカラムを選択"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>表示列</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  isColumnPickerOpen ? 'bg-white/20 text-white' : isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {visibleColumnCount}
-                </span>
-              </button>
+          {/* カラム選択ドロップダウン */}
+          <div className="relative" ref={columnPickerRef}>
+            <button
+              type="button"
+              onClick={() => setIsColumnPickerOpen(!isColumnPickerOpen)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all shadow-sm ${
+                isColumnPickerOpen
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : isDark
+                  ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-800'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+              }`}
+              title="表示するカラムを選択"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>表示列</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                isColumnPickerOpen ? 'bg-white/20 text-white' : isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+              }`}>
+                {visibleColumnCount}
+              </span>
+            </button>
 
-              {isColumnPickerOpen && (
-                <div className={`absolute right-0 mt-2 w-64 rounded-2xl border shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150 ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
-                }`}>
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/50">
-                    <span className="text-xs font-bold flex items-center gap-1">
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
-                      表示列の選択
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleResetColumns}
-                      className={`text-[10px] flex items-center gap-1 hover:underline ${
-                        isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      リセット
-                    </button>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {COLUMN_OPTIONS.map(col => {
-                      const isChecked = visibleColumns[col.key];
-                      return (
-                        <label
-                          key={col.key}
-                          className={`flex items-start gap-2.5 p-2 rounded-xl text-xs cursor-pointer transition-colors ${
-                            isChecked
-                              ? isDark ? 'bg-indigo-950/40 text-slate-100' : 'bg-indigo-50/70 text-slate-900'
-                              : isDark ? 'hover:bg-slate-800/60 text-slate-400' : 'hover:bg-slate-50 text-slate-500'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleColumn(col.key)}
-                            className="sr-only"
-                          />
-                          <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                            isChecked
-                              ? 'bg-indigo-600 border-indigo-600 text-white'
-                              : isDark ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'
-                          }`}>
-                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-semibold text-xs leading-none">{col.label}</div>
-                            <div className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                              {col.desc}
-                            </div>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
+            {isColumnPickerOpen && (
+              <div className={`absolute right-0 mt-2 w-64 rounded-2xl border shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150 ${
+                isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+              }`}>
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/50">
+                  <span className="text-xs font-bold flex items-center gap-1">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+                    表示列の選択
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetColumns}
+                    className={`text-[10px] flex items-center gap-1 hover:underline ${
+                      isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    リセット
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
+
+                <div className="space-y-1.5">
+                  {COLUMN_OPTIONS.map(col => {
+                    const isChecked = visibleColumns[col.key];
+                    return (
+                      <label
+                        key={col.key}
+                        className={`flex items-start gap-2.5 p-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                          isChecked
+                            ? isDark ? 'bg-indigo-950/40 text-slate-100' : 'bg-indigo-50/70 text-slate-900'
+                            : isDark ? 'hover:bg-slate-800/60 text-slate-400' : 'hover:bg-slate-50 text-slate-500'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleColumn(col.key)}
+                          className="sr-only"
+                        />
+                        <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                          isChecked
+                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                            : isDark ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-white'
+                        }`}>
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-semibold text-xs leading-none">{col.label}</div>
+                          <div className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {col.desc}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* 🖨️ 印刷ボタン */}
           <button
@@ -710,399 +931,199 @@ function ParticipantViewContent() {
         </div>
       </div>
 
-      {/* タイムテーブル一覧 */}
+      {/* タイムテーブル表示 */}
       {viewMode === 'card' ? (
-        /* スマホ向けカード表示 */
-        <div className="space-y-3">
-          {/* 集合・セッティング・オープニング枠 */}
-          {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
-            <div className={`rounded-2xl p-4 border flex items-center justify-between gap-3 shadow-sm ${
-              isDark 
-                ? 'bg-indigo-950/30 border-indigo-500/30' 
-                : 'bg-indigo-50/80 border-indigo-200'
-            }`}>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
-                  🎪
-                </div>
-                <div>
-                  <h3 className={`text-xs sm:text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    集合・機材セッティング・オープニング
-                  </h3>
-                  <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>音出し・進行確認・出欠確認</p>
-                </div>
-              </div>
-              <div className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border shrink-0 ${
+        <>
+          {/* 画面用: スマホ向けカード表示 */}
+          <div className="no-print space-y-3">
+            {/* 集合・セッティング・オープニング枠 */}
+            {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
+              <div className={`rounded-2xl p-4 border flex items-center justify-between gap-3 shadow-sm ${
                 isDark 
-                  ? 'text-indigo-300 bg-indigo-950/80 border-indigo-500/30' 
-                  : 'text-indigo-700 bg-white border-indigo-200 shadow-sm'
+                  ? 'bg-indigo-950/30 border-indigo-500/30' 
+                  : 'bg-indigo-50/80 border-indigo-200'
               }`}>
-                {data.eventStartTime} - {data.openingEndTime}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
+                    🎪
+                  </div>
+                  <div>
+                    <h3 className={`text-xs sm:text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                      集合・機材セッティング・オープニング
+                    </h3>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>音出し・進行確認・出欠確認</p>
+                  </div>
+                </div>
+                <div className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border shrink-0 ${
+                  isDark 
+                    ? 'text-indigo-300 bg-indigo-950/80 border-indigo-500/30' 
+                    : 'text-indigo-700 bg-white border-indigo-200 shadow-sm'
+                }`}>
+                  {data.eventStartTime} - {data.openingEndTime}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {filteredTimeline.map((item) => {
-            if (item.type === 'break') {
+            {filteredTimeline.map((item) => {
+              if (item.type === 'break') {
+                return (
+                  <div 
+                    key={item.id}
+                    className={`p-3.5 border rounded-2xl text-center text-xs font-semibold flex items-center justify-between gap-2 shadow-sm ${
+                      isDark 
+                        ? 'bg-emerald-950/25 border-emerald-500/30 text-emerald-300' 
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Coffee className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span>☕ 休憩・インターバル（セット転換＆進行調整）</span>
+                    </div>
+                    <div className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg border shrink-0 ${
+                      isDark 
+                        ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200' 
+                        : 'bg-white border-emerald-300 text-emerald-800 shadow-sm'
+                    }`}>
+                      {item.startTime} 〜 {item.endTime}
+                    </div>
+                  </div>
+                );
+              }
+
+              const s = item.item.song;
+              const isUserSong = selectedMember && s.members.some(m => m.name === selectedMember);
+              const category = s.category || '通常';
+
               return (
                 <div 
                   key={item.id}
-                  className={`p-3.5 border rounded-2xl text-center text-xs font-semibold flex items-center justify-between gap-2 shadow-sm ${
-                    isDark 
-                      ? 'bg-emerald-950/25 border-emerald-500/30 text-emerald-300' 
-                      : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  className={`rounded-2xl p-4 transition-all border shadow-sm ${
+                    isUserSong
+                      ? isDark
+                        ? 'bg-indigo-950/40 border-indigo-500/60 shadow-lg shadow-indigo-500/10 scale-[1.01]'
+                        : 'bg-indigo-50/90 border-indigo-400 shadow-md ring-1 ring-indigo-400/40 scale-[1.01]'
+                      : isDark
+                      ? 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Coffee className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>☕ 休憩・インターバル（セット転換＆進行調整）</span>
-                  </div>
-                  <div className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg border shrink-0 ${
-                    isDark 
-                      ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200' 
-                      : 'bg-white border-emerald-300 text-emerald-800 shadow-sm'
+                  {/* カード上段: 番号・時間・カテゴリ */}
+                  <div className={`flex items-center justify-between gap-2 mb-2 pb-2 border-b ${
+                    isDark ? 'border-slate-800/60' : 'border-slate-100'
                   }`}>
-                    {item.startTime} 〜 {item.endTime}
+                    <div className="flex items-center gap-2">
+                      <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center ${
+                        isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {item.originalIndex + 1}
+                      </span>
+                      <span className={`text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                        {item.item.startTime} - {item.item.endTime}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
+                        {category}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* カード中段: 曲名・バンド名・原曲アーティスト */}
+                  <div className="mb-3">
+                    <h3 className={`text-sm sm:text-base font-bold flex items-center gap-1.5 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                      <Music className="w-4 h-4 text-indigo-500 shrink-0" />
+                      <span>{s.title}</span>
+                    </h3>
+                    {(s.bandName || s.artist) && (
+                      <div className={`text-[11px] mt-1 flex flex-wrap gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {s.bandName && <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{s.bandName} </span>}
+                        {s.artist && <span>({s.artist})</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 機材情報 */}
+                  {(s.bring || s.rental || (s.requiresLongSetup && !s.bring && !s.rental)) && (
+                    <div className="mb-2.5 flex flex-wrap gap-2 text-[11px]">
+                      {s.requiresLongSetup && !s.bring && !s.rental && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 font-bold text-[10px]">
+                          ⚡ 転換長
+                        </span>
+                      )}
+                      {s.bring && (
+                        <span className={`px-2 py-0.5 rounded border ${
+                          isDark ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-slate-700 bg-slate-50 border-slate-200'
+                        }`}>
+                          持込: {s.bring}
+                        </span>
+                      )}
+                      {s.rental && (
+                        <span className={`px-2 py-0.5 rounded border ${
+                          isDark ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-slate-700 bg-slate-50 border-slate-200'
+                        }`}>
+                          レンタル: {s.rental}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* メンバー一覧 */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {s.members.map((m, mIdx) => {
+                      const isHighlighted = selectedMember === m.name;
+                      return (
+                        <span
+                          key={mIdx}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs transition-all ${getPartBadgeStyle(m.part)} ${
+                            isHighlighted ? 'ring-2 ring-pink-500 font-bold scale-105' : ''
+                          }`}
+                        >
+                          <span className="font-mono text-[10px] opacity-75">{m.part}</span>
+                          <span>{m.name}</span>
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               );
-            }
+            })}
 
-            const s = item.item.song;
-            const isUserSong = selectedMember && s.members.some(m => m.name === selectedMember);
-            const category = s.category || '通常';
-
-            return (
-              <div 
-                key={item.id}
-                className={`rounded-2xl p-4 transition-all border shadow-sm ${
-                  isUserSong
-                    ? isDark
-                      ? 'bg-indigo-950/40 border-indigo-500/60 shadow-lg shadow-indigo-500/10 scale-[1.01]'
-                      : 'bg-indigo-50/90 border-indigo-400 shadow-md ring-1 ring-indigo-400/40 scale-[1.01]'
-                    : isDark
-                    ? 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
-                    : 'bg-white border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                {/* カード上段: 番号・時間・カテゴリ */}
-                <div className={`flex items-center justify-between gap-2 mb-2 pb-2 border-b ${
-                  isDark ? 'border-slate-800/60' : 'border-slate-100'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center ${
-                      isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
-                    }`}>
-                      {item.originalIndex + 1}
-                    </span>
-                    <span className={`text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                      {item.item.startTime} - {item.item.endTime}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
-                      {category}
-                    </span>
-                  </div>
-                </div>
-
-                {/* カード中段: 曲名・バンド名・原曲アーティスト */}
-                <div className="mb-3">
-                  <h3 className={`text-sm sm:text-base font-bold flex items-center gap-1.5 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    <Music className="w-4 h-4 text-indigo-500 shrink-0" />
-                    <span>{s.title}</span>
-                  </h3>
-                  {(s.bandName || s.artist) && (
-                    <div className={`text-[11px] mt-1 flex flex-wrap gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {s.bandName && <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>🎸 {s.bandName}</span>}
-                      {s.artist && <span>({s.artist})</span>}
-                    </div>
-                  )}
-                </div>
-
-                {/* 機材情報 */}
-                {(s.bring || s.rental || (s.requiresLongSetup && !s.bring && !s.rental)) && (
-                  <div className="mb-2.5 flex flex-wrap gap-2 text-[11px]">
-                    {s.requiresLongSetup && !s.bring && !s.rental && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 font-bold text-[10px]">
-                        ⚡ 転換長
-                      </span>
-                    )}
-                    {s.bring && (
-                      <span className={`px-2 py-0.5 rounded border ${
-                        isDark ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-slate-700 bg-slate-50 border-slate-200'
-                      }`}>
-                        持込: {s.bring}
-                      </span>
-                    )}
-                    {s.rental && (
-                      <span className={`px-2 py-0.5 rounded border ${
-                        isDark ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-slate-700 bg-slate-50 border-slate-200'
-                      }`}>
-                        レンタル: {s.rental}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* メンバー一覧 */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {s.members.map((m, mIdx) => {
-                    const isHighlighted = selectedMember === m.name;
-                    return (
-                      <span
-                        key={mIdx}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs transition-all ${getPartBadgeStyle(m.part)} ${
-                          isHighlighted ? 'ring-2 ring-pink-500 font-bold scale-105' : ''
-                        }`}
-                      >
-                        <span className="font-mono text-[10px] opacity-75">{m.part}</span>
-                        <span>{m.name}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* 全曲終了・完全撤収枠 */}
-          {!selectedMember && data.eventEndTime && (
-            <div className={`rounded-2xl p-4 border flex items-center justify-between gap-3 shadow-sm ${
-              isDark 
-                ? 'bg-purple-950/30 border-purple-500/30' 
-                : 'bg-purple-50/80 border-purple-200'
-            }`}>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm">
-                  🏁
-                </div>
-                <div>
-                  <h3 className={`text-xs sm:text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    全曲演奏終了・片付け・写真撮影・完全撤収
-                  </h3>
-                  <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>機材撤収・完全退館</p>
-                </div>
-              </div>
-              <div className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border shrink-0 ${
+            {/* 全曲終了・完全撤収枠 */}
+            {!selectedMember && data.eventEndTime && (
+              <div className={`rounded-2xl p-4 border flex items-center justify-between gap-3 shadow-sm ${
                 isDark 
-                  ? 'text-purple-300 bg-purple-950/80 border-purple-500/30' 
-                  : 'text-purple-700 bg-white border-purple-200 shadow-sm'
+                  ? 'bg-purple-950/30 border-purple-500/30' 
+                  : 'bg-purple-50/80 border-purple-200'
               }`}>
-                〜 {data.eventEndTime}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm">
+                    🏁
+                  </div>
+                  <div>
+                    <h3 className={`text-xs sm:text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                      全曲演奏終了・片付け・写真撮影・完全撤収
+                    </h3>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>機材撤収・完全退館</p>
+                  </div>
+                </div>
+                <div className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border shrink-0 ${
+                  isDark 
+                    ? 'text-purple-300 bg-purple-950/80 border-purple-500/30' 
+                    : 'text-purple-700 bg-white border-purple-200 shadow-sm'
+                }`}>
+                  〜 {data.eventEndTime}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+
+          {/* 印刷用: カード表示時でも印刷時はテーブルを展開 */}
+          {renderTableView(true)}
+        </>
       ) : (
-        /* 表表示（印刷時は全行展開） */
-        <div className={`print-table border rounded-2xl overflow-hidden max-h-[700px] overflow-y-auto overflow-x-auto shadow-xl relative ${
-          isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200 shadow-slate-200/60'
-        }`}>
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className={`sticky top-0 z-20 border-b font-bold uppercase shadow-md ${
-              isDark ? 'bg-slate-950 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-300 text-slate-700'
-            }`}>
-              <tr>
-                {visibleColumns.number && (
-                  <th className={`sticky left-0 z-30 px-2.5 py-3 w-10 text-center ${
-                    isDark ? 'bg-slate-950 text-slate-400' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    #
-                  </th>
-                )}
-                {visibleColumns.time && (
-                  <th className={`px-3 py-3 min-w-[105px] ${
-                    visibleColumns.number ? 'border-l border-slate-700/50' : ''
-                  }`}>
-                    時間 / 区分
-                  </th>
-                )}
-                {visibleColumns.title && (
-                  <th className="px-3 py-3 min-w-[160px]">曲名 / バンド</th>
-                )}
-                {visibleColumns.members && (
-                  <th className="px-3 py-3 min-w-[200px]">担当メンバー</th>
-                )}
-                {visibleColumns.equipment && (
-                  <th className="px-3 py-3 min-w-[110px]">機材 / 備考</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDark ? 'divide-slate-800/60 bg-slate-950' : 'divide-slate-200 bg-white'}`}>
-              {/* オープニング枠 */}
-              {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
-                <tr className={isDark ? 'bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300' : 'bg-indigo-50/80 border-b border-indigo-200 text-indigo-900'}>
-                  {visibleColumns.number && (
-                    <td className="sticky left-0 z-10 px-2.5 py-3 text-center font-mono font-bold">
-                      -
-                    </td>
-                  )}
-                  {visibleColumns.time && (
-                    <td className="px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px]">
-                      <div>{data.eventStartTime} - {data.openingEndTime}</div>
-                      <div className="mt-0.5">
-                        <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                          準備
-                        </span>
-                      </div>
-                    </td>
-                  )}
-                  <td colSpan={Math.max(1, visibleColumnCount - (visibleColumns.number ? 1 : 0) - (visibleColumns.time ? 1 : 0))} className="px-3 py-3 font-bold text-xs">
-                    🎪 集合・機材セッティング・オープニング（音出し・出欠確認）
-                  </td>
-                </tr>
-              )}
-
-              {filteredTimeline.map((item) => {
-                if (item.type === 'break') {
-                  return (
-                    <tr key={item.id} className={isDark ? 'bg-emerald-950/30 border-y border-emerald-500/30' : 'bg-emerald-50 border-y border-emerald-200'}>
-                      {visibleColumns.number && (
-                        <td className="sticky left-0 z-10 px-2.5 py-2.5 text-center font-mono text-emerald-400 font-bold">
-                          ☕
-                        </td>
-                      )}
-                      {visibleColumns.time && (
-                        <td className="px-3 py-2.5 font-mono whitespace-nowrap font-bold text-xs text-emerald-600 dark:text-emerald-300">
-                          {item.startTime} - {item.endTime}
-                        </td>
-                      )}
-                      <td 
-                        colSpan={Math.max(1, visibleColumnCount - (visibleColumns.number ? 1 : 0) - (visibleColumns.time ? 1 : 0))} 
-                        className={`px-3 py-2.5 font-semibold text-xs ${
-                          isDark ? 'text-emerald-300' : 'text-emerald-800'
-                        }`}
-                      >
-                        ☕ 休憩・インターバル（セット転換＆進行調整）
-                      </td>
-                    </tr>
-                  );
-                }
-
-                const s = item.item.song;
-                const isUserSong = selectedMember && s.members.some(m => m.name === selectedMember);
-                const category = s.category || '通常';
-
-                return (
-                  <tr 
-                    key={item.id} 
-                    className={`transition-colors group ${
-                      isUserSong 
-                        ? isDark ? 'bg-indigo-950/40 font-medium' : 'bg-indigo-50/90 font-medium'
-                        : isDark ? 'hover:bg-slate-900/60' : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    {/* 曲番号 (#) */}
-                    {visibleColumns.number && (
-                      <td className={`sticky left-0 z-10 px-2.5 py-3 text-center font-mono font-bold ${
-                        isUserSong 
-                          ? isDark ? 'bg-indigo-950/80 text-indigo-200' : 'bg-indigo-100 text-indigo-900'
-                          : isDark ? 'bg-slate-950 text-slate-400 group-hover:bg-slate-900' : 'bg-white text-slate-500 group-hover:bg-slate-50'
-                      }`}>
-                        {item.originalIndex + 1}
-                      </td>
-                    )}
-
-                    {/* 時間・カテゴリ（統合） */}
-                    {visibleColumns.time && (
-                      <td className={`px-3 py-3 font-mono whitespace-nowrap font-medium ${
-                        isUserSong 
-                          ? isDark ? 'text-white' : 'text-indigo-950 font-bold'
-                          : isDark ? 'text-slate-200' : 'text-slate-800'
-                      }`}>
-                        <div>{item.item.startTime} - {item.item.endTime}</div>
-                        <div className="mt-1">
-                          <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
-                            {category}
-                          </span>
-                        </div>
-                      </td>
-                    )}
-
-                    {/* 曲名 / バンド */}
-                    {visibleColumns.title && (
-                      <td className="px-3 py-3 break-words">
-                        <div className={`font-bold text-xs flex items-start gap-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                          <Music className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
-                          <span>{s.title}</span>
-                        </div>
-                        {(s.bandName || s.artist) && (
-                          <div className={`text-[11px] mt-0.5 break-words ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            {s.bandName && <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{s.bandName} </span>}
-                            {s.artist && <span>({s.artist})</span>}
-                          </div>
-                        )}
-                      </td>
-                    )}
-
-                    {/* 担当メンバー */}
-                    {visibleColumns.members && (
-                      <td className="px-3 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {s.members.map((m, mIdx) => (
-                            <span
-                              key={mIdx}
-                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] ${getPartBadgeStyle(m.part)} ${
-                                selectedMember === m.name ? 'ring-2 ring-pink-500 font-bold scale-105' : ''
-                              }`}
-                            >
-                              <span className="font-mono text-[9px] opacity-75">{m.part}</span>
-                              <span>{m.name}</span>
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                    )}
-
-                    {/* 機材・備考 */}
-                    {visibleColumns.equipment && (
-                      <td className={`px-3 py-3 text-[11px] break-words ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        <div className="space-y-0.5">
-                          {s.bring && <div>持込: {s.bring}</div>}
-                          {s.rental && <div>レンタル: {s.rental}</div>}
-                          {!s.bring && !s.rental && !s.requiresLongSetup && <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>-</span>}
-                          {s.requiresLongSetup && !s.bring && !s.rental && (
-                            <div>
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-[9px] font-bold">
-                                ⚡ 転換長
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-
-              {/* 全曲終了・完全撤収枠 */}
-              {!selectedMember && data.eventEndTime && (
-                <tr className={isDark ? 'bg-purple-950/30 border-t border-purple-500/30 text-purple-300' : 'bg-purple-50/80 border-t border-purple-200 text-purple-900'}>
-                  {visibleColumns.number && (
-                    <td className="sticky left-0 z-10 px-2.5 py-3 text-center font-mono font-bold">
-                      -
-                    </td>
-                  )}
-                  {visibleColumns.time && (
-                    <td className="px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px]">
-                      <div>〜 {data.eventEndTime}</div>
-                      <div className="mt-0.5">
-                        <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                          撤収
-                        </span>
-                      </div>
-                    </td>
-                  )}
-                  <td colSpan={Math.max(1, visibleColumnCount - (visibleColumns.number ? 1 : 0) - (visibleColumns.time ? 1 : 0))} className="px-3 py-3 font-bold text-xs">
-                    🏁 全曲演奏終了・片付け・写真撮影・完全撤収
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        /* 表表示（画面 & 印刷） */
+        renderTableView(false)
       )}
 
       {/* 下部スポンサー広告バナー */}
