@@ -938,28 +938,34 @@ function ParticipantViewContent() {
           <div className="no-print space-y-3">
             {/* 集合・セッティング・オープニング枠 */}
             {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
-              <div className={`rounded-2xl p-4 border flex items-center justify-between gap-3 shadow-sm ${
+              <div className={`rounded-2xl p-3 sm:p-3.5 border flex items-center justify-between gap-3 shadow-sm transition-colors ${
                 isDark 
                   ? 'bg-indigo-950/30 border-indigo-500/30' 
                   : 'bg-indigo-50/80 border-indigo-200'
               }`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
+                    isDark ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
+                  }`}>
                     🎪
-                  </div>
-                  <div>
-                    <h3 className={`text-xs sm:text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                      集合・機材セッティング・オープニング
-                    </h3>
-                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>音出し・進行確認・出欠確認</p>
-                  </div>
+                  </span>
+                  <span className={`font-mono text-xs font-bold shrink-0 ${
+                    isDark ? 'text-indigo-200' : 'text-indigo-950'
+                  }`}>
+                    {data.eventStartTime} - {data.openingEndTime}
+                  </span>
+                  <span className={`text-xs font-medium truncate hidden sm:inline ${
+                    isDark ? 'text-indigo-300/80' : 'text-indigo-700'
+                  }`}>
+                    集合・機材セッティング・オープニング
+                  </span>
                 </div>
-                <div className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border shrink-0 ${
-                  isDark 
-                    ? 'text-indigo-300 bg-indigo-950/80 border-indigo-500/30' 
-                    : 'text-indigo-700 bg-white border-indigo-200 shadow-sm'
-                }`}>
-                  {data.eventStartTime} - {data.openingEndTime}
+                <div className="shrink-0">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                    isDark ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-100 text-indigo-700 border-indigo-300'
+                  }`}>
+                    準備
+                  </span>
                 </div>
               </div>
             )}
@@ -969,22 +975,35 @@ function ParticipantViewContent() {
                 return (
                   <div 
                     key={item.id}
-                    className={`p-3.5 border rounded-2xl text-center text-xs font-semibold flex items-center justify-between gap-2 shadow-sm ${
+                    className={`p-3 sm:p-3.5 border rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 shadow-sm transition-colors ${
                       isDark 
                         ? 'bg-emerald-950/25 border-emerald-500/30 text-emerald-300' 
                         : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                     }`}
                   >
-                    <div className="flex items-center gap-2">
-                      <Coffee className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>☕ 休憩・インターバル（セット転換＆進行調整）</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
+                        isDark ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      }`}>
+                        ☕
+                      </span>
+                      <span className={`font-mono text-xs font-bold shrink-0 ${
+                        isDark ? 'text-emerald-200' : 'text-emerald-950'
+                      }`}>
+                        {item.startTime} - {item.endTime}
+                      </span>
+                      <span className={`text-xs font-medium truncate hidden sm:inline ${
+                        isDark ? 'text-emerald-300/80' : 'text-emerald-700'
+                      }`}>
+                        休憩・インターバル（セット転換＆進行調整）
+                      </span>
                     </div>
-                    <div className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg border shrink-0 ${
-                      isDark 
-                        ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200' 
-                        : 'bg-white border-emerald-300 text-emerald-800 shadow-sm'
-                    }`}>
-                      {item.startTime} 〜 {item.endTime}
+                    <div className="shrink-0">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        isDark ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                      }`}>
+                        休憩
+                      </span>
                     </div>
                   </div>
                 );
@@ -1091,28 +1110,34 @@ function ParticipantViewContent() {
 
             {/* 全曲終了・完全撤収枠 */}
             {!selectedMember && data.eventEndTime && (
-              <div className={`rounded-2xl p-4 border flex items-center justify-between gap-3 shadow-sm ${
+              <div className={`rounded-2xl p-3 sm:p-3.5 border flex items-center justify-between gap-3 shadow-sm transition-colors ${
                 isDark 
                   ? 'bg-purple-950/30 border-purple-500/30' 
                   : 'bg-purple-50/80 border-purple-200'
               }`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
+                    isDark ? 'bg-purple-900/60 text-purple-300 border border-purple-500/30' : 'bg-purple-100 text-purple-800 border border-purple-300'
+                  }`}>
                     🏁
-                  </div>
-                  <div>
-                    <h3 className={`text-xs sm:text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                      全曲演奏終了・片付け・写真撮影・完全撤収
-                    </h3>
-                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>機材撤収・完全退館</p>
-                  </div>
+                  </span>
+                  <span className={`font-mono text-xs font-bold shrink-0 ${
+                    isDark ? 'text-purple-200' : 'text-purple-950'
+                  }`}>
+                    〜 {data.eventEndTime}
+                  </span>
+                  <span className={`text-xs font-medium truncate hidden sm:inline ${
+                    isDark ? 'text-purple-300/80' : 'text-purple-700'
+                  }`}>
+                    全曲演奏終了・片付け・写真撮影・完全撤収
+                  </span>
                 </div>
-                <div className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border shrink-0 ${
-                  isDark 
-                    ? 'text-purple-300 bg-purple-950/80 border-purple-500/30' 
-                    : 'text-purple-700 bg-white border-purple-200 shadow-sm'
-                }`}>
-                  〜 {data.eventEndTime}
+                <div className="shrink-0">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                    isDark ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-purple-100 text-purple-700 border-purple-300'
+                  }`}>
+                    撤収
+                  </span>
                 </div>
               </div>
             )}
