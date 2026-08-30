@@ -129,6 +129,9 @@ export default function Home() {
               result={result}
               onOptimize={handleOptimize}
               isOptimizing={isOptimizing}
+              config={config}
+              constraints={constraints}
+              onResultChange={setResult}
             />
           </div>
 

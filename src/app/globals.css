@@ -165,4 +165,61 @@ body.light-theme {
     color: #6b21a8 !important;
     font-weight: 600 !important;
   }
+
+  /* ダークモード下でも印刷時は白背景＆高コントラスト濃色テキストを強制 */
+  .print-table span,
+  .print-table div,
+  .print-table h1,
+  .print-table h2,
+  .print-table h3,
+  .print-table p {
+    color: #0f172a !important;
+  }
+
+  .print-table .text-slate-400,
+  .print-table .text-slate-500,
+  .print-table .text-slate-600 {
+    color: #475569 !important;
+  }
+
+  .print-table span[class*="bg-pink"] {
+    background-color: #fce7f3 !important;
+    color: #be185d !important;
+    border-color: #f472b6 !important;
+  }
+
+  .print-table span[class*="bg-amber"],
+  .print-table span[class*="bg-yellow"] {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border-color: #fcd34d !important;
+  }
+
+  .print-table span[class*="bg-emerald"],
+  .print-table span[class*="bg-green"] {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+    border-color: #6ee7b7 !important;
+  }
+
+  .print-table span[class*="bg-purple"] {
+    background-color: #f3e8ff !important;
+    color: #6b21a8 !important;
+    border-color: #d8b4fe !important;
+  }
+
+  .print-table span[class*="bg-blue"],
+  .print-table span[class*="bg-indigo"],
+  .print-table span[class*="bg-sky"] {
+    background-color: #e0e7ff !important;
+    color: #3730a3 !important;
+    border-color: #a5b4fc !important;
+  }
+
+  .print-table span[class*="bg-slate"] {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+  }
 }
+

@@ -80,3 +80,32 @@ export interface OptimizationResult {
     vocalConsecutive: number;
   };
 }
+
+// 料金設定・支払い管理関連の型
+export interface PricingTier {
+  id: string;
+  minSongs: number;
+  maxSongs: number; // 例: 999なら上限なし
+  price: number;
+  label?: string;
+}
+
+export interface PaymentConfig {
+  pricingTiers: PricingTier[];
+  rentalDailyFee: number; // レンタル機材がある場合の1日あたり加算額
+  partyFee: number;       // 懇親会（打ち上げ）費用
+}
+
+export interface ParticipantCheckInRecord {
+  memberName: string;
+  checkedIn: boolean;
+  checkInTime?: string;
+  paid: boolean;
+  partyJoined: boolean;
+  hasRental: boolean;
+  songCount: number;
+  calculatedFee: number;
+  customFee?: number; // 金額の手動上書き用（割引や特例対応）
+  notes?: string;
+}
+

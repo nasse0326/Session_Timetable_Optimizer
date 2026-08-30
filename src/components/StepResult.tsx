@@ -1,19 +1,24 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { OptimizationResult } from '../types';
+import { OptimizationResult, SessionConfig, MemberConstraint, Song } from '../types';
 import { encodeScheduleToUrl } from '../utils/share';
+import { recalculateSchedule } from '../utils/optimizer';
 import SharePublishModal from './SharePublishModal';
 import { 
   Play, Copy, Check, AlertTriangle, Coffee, Loader2, 
   Calendar, Sparkles, FileSpreadsheet, MessageSquare, 
-  Music, Table, Download, Eye, Share2, Smartphone, Clock
+  Music, Table, Download, Eye, Share2, Smartphone, Clock,
+  ArrowUp, ArrowDown, ArrowLeftRight, GripVertical, X
 } from 'lucide-react';
 
 interface StepResultProps {
   result: OptimizationResult | null;
   onOptimize: () => void;
   isOptimizing: boolean;
+  config?: SessionConfig;
+  constraints?: MemberConstraint[];
+  onResultChange?: (result: OptimizationResult) => void;
 }
 
 const getPartBadgeStyle = (part: string) => {
@@ -49,7 +54,14 @@ const sortMembers = (members: {name: string, part: string}[]) => {
   return [...members].sort((a, b) => getPartPriority(a.part) - getPartPriority(b.part));
 };
 
-export default function StepResult({ result, onOptimize, isOptimizing }: StepResultProps) {
+export default function StepResult({ 
+  result, 
+  onOptimize, 
+  isOptimizing,
+  config,
+  constraints,
+  onResultChange
+}: StepResultProps) {
   const [outputTab, setOutputTab] = useState<'table' | 'tsv' | 'text'>('table');
   const [copiedTsv, setCopiedTsv] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
@@ -57,6 +69,64 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
   // 確定共有モーダルの状態
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+
+  // ドラッグ＆ドロップ用ステート
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  // 2曲スワップモーダル用ステート
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
+  const [swapA, setSwapA] = useState<number>(0);
+  const [swapB, setSwapB] = useState<number>(1);
+
+  // スケジュール並び替え＆リアルタイム再計算
+  const handleReorder = (newSongList: Song[]) => {
+    if (!config || !constraints || !onResultChange) return;
+    const newResult = recalculateSchedule(newSongList, constraints, config);
+    onResultChange(newResult);
+  };
+
+  const handleMoveUp = (idx: number) => {
+    if (!result || idx <= 0) return;
+    const currentSongs = result.schedule.map(s => s.song);
+    const newSongs = [...currentSongs];
+    [newSongs[idx - 1], newSongs[idx]] = [newSongs[idx], newSongs[idx - 1]];
+    handleReorder(newSongs);
+  };
+
+  const handleMoveDown = (idx: number) => {
+    if (!result || idx >= result.schedule.length - 1) return;
+    const currentSongs = result.schedule.map(s => s.song);
+    const newSongs = [...currentSongs];
+    [newSongs[idx + 1], newSongs[idx]] = [newSongs[idx], newSongs[idx + 1]];
+    handleReorder(newSongs);
+  };
+
+  const handleDrop = (targetIdx: number) => {
+    if (draggedIdx === null || draggedIdx === targetIdx || !result) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const currentSongs = result.schedule.map(s => s.song);
+    const newSongs = [...currentSongs];
+    const [removed] = newSongs.splice(draggedIdx, 1);
+    newSongs.splice(targetIdx, 0, removed);
+    handleReorder(newSongs);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handleExecuteSwap = () => {
+    if (!result) return;
+    if (swapA === swapB || swapA < 0 || swapB < 0 || swapA >= result.schedule.length || swapB >= result.schedule.length) return;
+    const currentSongs = result.schedule.map(s => s.song);
+    const newSongs = [...currentSongs];
+    [newSongs[swapA], newSongs[swapB]] = [newSongs[swapB], newSongs[swapA]];
+    handleReorder(newSongs);
+    setIsSwapModalOpen(false);
+  };
+
 
   const handlePublishShare = () => {
     if (!result || result.schedule.length === 0) return;
@@ -411,45 +481,64 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
           <div className="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden shadow-inner">
             {/* ヘッダー & タブ切り替えバー */}
             <div className="flex flex-wrap justify-between items-center p-4 border-b border-slate-800 bg-slate-900/60 gap-3">
-              <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setOutputTab('table')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    outputTab === 'table'
-                      ? 'bg-pink-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Table className="w-3.5 h-3.5" />
-                  タイムテーブル表
-                </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setOutputTab('table')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      outputTab === 'table'
+                        ? 'bg-pink-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Table className="w-3.5 h-3.5" />
+                    タイムテーブル表
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setOutputTab('tsv')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    outputTab === 'tsv'
-                      ? 'bg-emerald-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  Excel / スプシ貼付用 (TSV)
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setOutputTab('tsv')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      outputTab === 'tsv'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    Excel / スプシ貼付用 (TSV)
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setOutputTab('text')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    outputTab === 'text'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  LINE / Slack用
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setOutputTab('text')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      outputTab === 'text'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    LINE / Slack用
+                  </button>
+                </div>
+
+                {/* 2曲スワップボタン */}
+                {outputTab === 'table' && result.schedule.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSwapA(0);
+                      setSwapB(Math.min(1, result.schedule.length - 1));
+                      setIsSwapModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 transition-all shadow-sm active:scale-95"
+                    title="指定した2曲の順番を入れ替える"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>2曲を直接スワップ</span>
+                  </button>
+                )}
               </div>
               
               <div className="flex flex-wrap items-center gap-2">
@@ -489,180 +578,254 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
 
             {/* タブ1: タイムテーブル表ビュー */}
             {outputTab === 'table' && (
-              <div className="max-h-[650px] overflow-y-auto overflow-x-auto relative rounded-b-xl border-t border-slate-800">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="sticky top-0 z-20 bg-slate-900 border-b border-slate-700 text-slate-300 uppercase font-bold shadow-md">
-                    <tr>
-                      <th className="sticky left-0 z-30 bg-slate-900 px-2.5 py-3 w-10 text-center text-slate-400">#</th>
-                      <th className="sticky left-10 z-30 bg-slate-900 px-3 py-3 min-w-[95px] border-r border-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">時間</th>
-                      <th className="px-3 py-3 min-w-[80px]">カテゴリ</th>
-                      <th className="px-3 py-3 min-w-[110px]">バンド名</th>
-                      <th className="px-3 py-3 min-w-[110px]">アーティスト名</th>
-                      <th className="px-3 py-3 min-w-[140px]">曲名</th>
-                      <th className="px-3 py-3 min-w-[90px]">レンタル</th>
-                      <th className="px-3 py-3 min-w-[110px]">持込</th>
-                      <th className="px-3 py-3 min-w-[200px]">担当メンバー</th>
-                      <th className="px-3 py-3 min-w-[140px]">備考 / 状況</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 bg-slate-950">
-                    {/* オープニング枠 */}
-                    {result.eventStartTime && result.openingEndTime && result.eventStartTime !== result.openingEndTime && (
-                      <tr className="bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300">
-                        <td className="sticky left-0 z-10 bg-indigo-950 px-2.5 py-3 text-center font-mono font-bold text-indigo-400">
-                          -
-                        </td>
-                        <td className="sticky left-10 z-10 bg-indigo-950 px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px] border-r border-indigo-500/30 shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-indigo-200">
-                          {result.eventStartTime} - {result.openingEndTime}
-                        </td>
-                        <td className="px-3 py-3">
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                            準備
-                          </span>
-                        </td>
-                        <td colSpan={7} className="px-3 py-3 font-bold text-slate-100 text-xs">
-                          🎪 集合・機材セッティング・オープニング（音出し・出欠確認）
-                        </td>
-                      </tr>
-                    )}
+              <div>
+                <div className="bg-slate-900/40 px-4 py-2 text-[11px] text-slate-400 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded text-[10px] font-semibold">
+                      💡 手動入れ替え
+                    </span>
+                    <span>「▲ / ▼」ボタン、または行の「⠿」をドラッグして曲順を変更できます（時間・警告は即座に自動再計算されます）</span>
+                  </div>
+                </div>
 
-                    {result.schedule.map((item, idx) => {
-                      const s = item.song;
-                      const category = s.category || (s.isAssignment ? '課題曲' : (s.isSession ? 'セッション' : '通常'));
-                      
-                      return (
-                        <React.Fragment key={idx}>
-                          <tr className="hover:bg-slate-900/60 transition-colors group">
-                            {/* 固定列 1: # */}
-                            <td className="sticky left-0 z-10 bg-slate-950 group-hover:bg-slate-900 px-2.5 py-3 text-center text-slate-400 font-mono font-bold">
-                              {idx + 1}
-                            </td>
-                            {/* 固定列 2: 時間 */}
-                            <td className="sticky left-10 z-10 bg-slate-950 group-hover:bg-slate-900 px-3 py-3 text-slate-200 font-mono whitespace-nowrap font-medium text-[11px] border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
-                              {item.startTime} - {item.endTime}
-                            </td>
-                            <td className="px-3 py-3">
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                                category === '課題曲'
-                                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                                  : category === 'インスト' || category === 'セッション'
-                                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                                  : 'bg-slate-800 text-slate-300 border-slate-700'
-                              }`}>
-                                {category}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 text-slate-300 font-medium text-[11px] break-words">
-                              {s.bandName || <span className="text-slate-600">-</span>}
-                            </td>
-                            <td className="px-3 py-3 text-slate-400 text-[11px] break-words">
-                              {s.artist || <span className="text-slate-600">-</span>}
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="font-semibold text-slate-100 text-xs flex items-start gap-1 break-words">
-                                <Music className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-                                <span>{s.title}</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-slate-300 text-[11px] break-words">
-                              {s.rental ? s.rental : <span className="text-slate-600">-</span>}
-                            </td>
-                            <td className="px-3 py-3 text-slate-300 text-[11px] break-words">
-                              <div className="space-y-1">
-                                {s.bring ? <span>{s.bring}</span> : <span className="text-slate-600">-</span>}
-                                {s.requiresLongSetup && !s.bring && !s.rental && (
-                                  <div>
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-bold">
-                                      ⚡ 転換長
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="flex flex-wrap gap-1">
-                                {sortMembers(s.members).map((m, i) => (
-                                  <span
-                                    key={i}
-                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] ${getPartBadgeStyle(m.part)}`}
+                <div className="max-h-[650px] overflow-y-auto overflow-x-auto relative rounded-b-xl">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="sticky top-0 z-20 bg-slate-900 border-b border-slate-700 text-slate-300 uppercase font-bold shadow-md">
+                      <tr>
+                        <th className="sticky left-0 z-30 bg-slate-900 px-2 py-3 w-14 text-center text-slate-400">移動</th>
+                        <th className="sticky left-14 z-30 bg-slate-900 px-2.5 py-3 w-10 text-center text-slate-400">#</th>
+                        <th className="sticky left-24 z-30 bg-slate-900 px-3 py-3 min-w-[95px] border-r border-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">時間</th>
+                        <th className="px-3 py-3 min-w-[80px]">カテゴリ</th>
+                        <th className="px-3 py-3 min-w-[110px]">バンド名</th>
+                        <th className="px-3 py-3 min-w-[110px]">アーティスト名</th>
+                        <th className="px-3 py-3 min-w-[140px]">曲名</th>
+                        <th className="px-3 py-3 min-w-[90px]">レンタル</th>
+                        <th className="px-3 py-3 min-w-[110px]">持込</th>
+                        <th className="px-3 py-3 min-w-[200px]">担当メンバー</th>
+                        <th className="px-3 py-3 min-w-[140px]">備考 / 状況</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-950">
+                      {/* オープニング枠 */}
+                      {result.eventStartTime && result.openingEndTime && result.eventStartTime !== result.openingEndTime && (
+                        <tr className="bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300">
+                          <td className="sticky left-0 z-10 bg-indigo-950 px-2 py-3 text-center text-slate-600">
+                            -
+                          </td>
+                          <td className="sticky left-14 z-10 bg-indigo-950 px-2.5 py-3 text-center font-mono font-bold text-indigo-400">
+                            -
+                          </td>
+                          <td className="sticky left-24 z-10 bg-indigo-950 px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px] border-r border-indigo-500/30 shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-indigo-200">
+                            {result.eventStartTime} - {result.openingEndTime}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                              準備
+                            </span>
+                          </td>
+                          <td colSpan={7} className="px-3 py-3 font-bold text-slate-100 text-xs">
+                            🎪 集合・機材セッティング・オープニング（音出し・出欠確認）
+                          </td>
+                        </tr>
+                      )}
+
+                      {result.schedule.map((item, idx) => {
+                        const s = item.song;
+                        const category = s.category || (s.isAssignment ? '課題曲' : (s.isSession ? 'セッション' : '通常'));
+                        const isDragging = draggedIdx === idx;
+                        const isDragOver = dragOverIdx === idx;
+                        
+                        return (
+                          <React.Fragment key={`${s.id}-${idx}`}>
+                            <tr 
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('text/plain', idx.toString());
+                                setDraggedIdx(idx);
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                if (dragOverIdx !== idx) setDragOverIdx(idx);
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                handleDrop(idx);
+                              }}
+                              onDragEnd={() => {
+                                setDraggedIdx(null);
+                                setDragOverIdx(null);
+                              }}
+                              className={`transition-colors group ${
+                                isDragging ? 'opacity-30 bg-indigo-950/50' : 'hover:bg-slate-900/60'
+                              } ${
+                                isDragOver ? 'border-t-2 border-indigo-500 bg-indigo-950/40' : ''
+                              }`}
+                            >
+                              {/* 固定列 0: 移動ボタン & ドラッグハンドル */}
+                              <td className="sticky left-0 z-10 bg-slate-950 group-hover:bg-slate-900 px-1 py-2 text-center select-none">
+                                <div className="flex items-center justify-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveUp(idx)}
+                                    disabled={idx === 0}
+                                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 disabled:hover:bg-transparent rounded transition-colors"
+                                    title="1つ上へ移動"
                                   >
-                                    <span className="font-mono text-[9px] opacity-70">{m.part}</span>
-                                    <span className="font-medium">{m.name}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 break-words">
-                              {item.conflicts.length > 0 ? (
-                                <div className="flex flex-col gap-1">
-                                  {item.conflicts.map((c, i) => (
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveDown(idx)}
+                                    disabled={idx === result.schedule.length - 1}
+                                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 disabled:hover:bg-transparent rounded transition-colors"
+                                    title="1つ下へ移動"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </button>
+                                  <div 
+                                    className="p-1 text-slate-500 hover:text-indigo-400 cursor-grab active:cursor-grabbing"
+                                    title="ドラッグして並び替え"
+                                  >
+                                    <GripVertical className="w-3.5 h-3.5" />
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* 固定列 1: # */}
+                              <td className="sticky left-14 z-10 bg-slate-950 group-hover:bg-slate-900 px-2.5 py-3 text-center text-slate-400 font-mono font-bold">
+                                {idx + 1}
+                              </td>
+
+                              {/* 固定列 2: 時間 */}
+                              <td className="sticky left-24 z-10 bg-slate-950 group-hover:bg-slate-900 px-3 py-3 text-slate-200 font-mono whitespace-nowrap font-medium text-[11px] border-r border-slate-800 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
+                                {item.startTime} - {item.endTime}
+                              </td>
+                              <td className="px-3 py-3">
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                  category === '課題曲'
+                                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                                    : category === 'インスト' || category === 'セッション'
+                                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                                    : 'bg-slate-800 text-slate-300 border-slate-700'
+                                }`}>
+                                  {category}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 text-slate-300 font-medium text-[11px] break-words">
+                                {s.bandName || <span className="text-slate-600">-</span>}
+                              </td>
+                              <td className="px-3 py-3 text-slate-400 text-[11px] break-words">
+                                {s.artist || <span className="text-slate-600">-</span>}
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="font-semibold text-slate-100 text-xs flex items-start gap-1 break-words">
+                                  <Music className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                                  <span>{s.title}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 text-slate-300 text-[11px] break-words">
+                                {s.rental ? s.rental : <span className="text-slate-600">-</span>}
+                              </td>
+                              <td className="px-3 py-3 text-slate-300 text-[11px] break-words">
+                                <div className="space-y-1">
+                                  {s.bring ? <span>{s.bring}</span> : <span className="text-slate-600">-</span>}
+                                  {s.requiresLongSetup && !s.bring && !s.rental && (
+                                    <div>
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-bold">
+                                        ⚡ 転換長
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="flex flex-wrap gap-1">
+                                  {sortMembers(s.members).map((m, i) => (
                                     <span
                                       key={i}
-                                      className={`text-[10px] px-1.5 py-0.5 rounded border flex items-center gap-1 w-max font-medium ${
-                                        c.includes('違反')
-                                          ? 'bg-red-500/15 text-red-300 border-red-500/30'
-                                          : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                                      }`}
+                                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] ${getPartBadgeStyle(m.part)}`}
                                     >
-                                      <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
-                                      {c}
+                                      <span className="font-mono text-[9px] opacity-70">{m.part}</span>
+                                      <span className="font-medium">{m.name}</span>
                                     </span>
                                   ))}
                                 </div>
-                              ) : (
-                                <span className="text-emerald-400/80 text-[10px] font-medium flex items-center gap-0.5">
-                                  ✓ 良好
-                                </span>
-                              )}
-                              {s.rawNotes && (
-                                <div className="text-[10px] text-slate-400 mt-1 font-mono break-words leading-tight bg-slate-900/60 p-1 rounded border border-slate-800">
-                                  📝 {s.rawNotes}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                          {item.isBreakAfter && (
-                            <tr className="bg-emerald-950/30 border-y border-emerald-500/30">
-                              <td colSpan={10} className="px-3 py-2.5 text-center text-emerald-300">
-                                <div className="flex items-center justify-center gap-2 font-semibold text-xs">
-                                  <Coffee className="w-4 h-4 text-emerald-400" />
-                                  <span>☕ 休憩・インターバル（セット転換＆進行調整）</span>
-                                </div>
+                              </td>
+                              <td className="px-3 py-3 break-words">
+                                {item.conflicts.length > 0 ? (
+                                  <div className="flex flex-col gap-1">
+                                    {item.conflicts.map((c, i) => (
+                                      <span
+                                        key={i}
+                                        className={`text-[10px] px-1.5 py-0.5 rounded border flex items-center gap-1 w-max font-medium ${
+                                          c.includes('違反')
+                                            ? 'bg-red-500/15 text-red-300 border-red-500/30'
+                                            : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                        }`}
+                                      >
+                                        <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                                        {c}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-emerald-400/80 text-[10px] font-medium flex items-center gap-0.5">
+                                    ✓ 良好
+                                  </span>
+                                )}
+                                {s.rawNotes && (
+                                  <div className="text-[10px] text-slate-400 mt-1 font-mono break-words leading-tight bg-slate-900/60 p-1 rounded border border-slate-800">
+                                    📝 {s.rawNotes}
+                                  </div>
+                                )}
                               </td>
                             </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-
-                    {/* エンディング枠 */}
-                    {result.songsEndTime && result.eventEndTime && (
-                      <tr className="bg-purple-950/30 border-t border-purple-500/30 text-purple-300">
-                        <td className="sticky left-0 z-10 bg-purple-950 px-2.5 py-3 text-center font-mono font-bold text-purple-400">
-                          -
-                        </td>
-                        <td className="sticky left-10 z-10 bg-purple-950 px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px] border-r border-purple-500/30 shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-purple-200">
-                          {result.songsEndTime} - {result.eventEndTime}
-                        </td>
-                        <td className="px-3 py-3">
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                            撤収
-                          </span>
-                        </td>
-                        <td colSpan={7} className="px-3 py-3 font-bold text-slate-100 text-xs">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span>🏁 全曲演奏終了・片付け・写真撮影・完全撤収</span>
-                            {result.isExtended && (
-                              <span className="text-[10px] font-normal bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded">
-                                ⚠️ 予定時刻を超過したため自動延長
-                              </span>
+                            {item.isBreakAfter && (
+                              <tr className="bg-emerald-950/30 border-y border-emerald-500/30">
+                                <td colSpan={11} className="px-3 py-2.5 text-center text-emerald-300">
+                                  <div className="flex items-center justify-center gap-2 font-semibold text-xs">
+                                    <Coffee className="w-4 h-4 text-emerald-400" />
+                                    <span>☕ 休憩・インターバル（セット転換＆進行調整）</span>
+                                  </div>
+                                </td>
+                              </tr>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                          </React.Fragment>
+                        );
+                      })}
+
+                      {/* エンディング枠 */}
+                      {result.songsEndTime && result.eventEndTime && (
+                        <tr className="bg-purple-950/30 border-t border-purple-500/30 text-purple-300">
+                          <td className="sticky left-0 z-10 bg-purple-950 px-2 py-3 text-center text-slate-600">
+                            -
+                          </td>
+                          <td className="sticky left-14 z-10 bg-purple-950 px-2.5 py-3 text-center font-mono font-bold text-purple-400">
+                            -
+                          </td>
+                          <td className="sticky left-24 z-10 bg-purple-950 px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px] border-r border-purple-500/30 shadow-[2px_0_5px_rgba(0,0,0,0.3)] text-purple-200">
+                            {result.songsEndTime} - {result.eventEndTime}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                              撤収
+                            </span>
+                          </td>
+                          <td colSpan={7} className="px-3 py-3 font-bold text-slate-100 text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>🏁 全曲演奏終了・片付け・写真撮影・完全撤収</span>
+                              {result.isExtended && (
+                                <span className="text-[10px] font-normal bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded">
+                                  ⚠️ 予定時刻を超過したため自動延長
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
@@ -710,6 +873,93 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
         </div>
       )}
 
+      {/* 2曲スワップモーダル */}
+      {isSwapModalOpen && result && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-indigo-500/30 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+            <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/40">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <ArrowLeftRight className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100">2曲の順番を入れ替える</h3>
+                  <p className="text-xs text-slate-400">入れ替える2曲を選択して実行してください</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSwapModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* 曲A */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">曲 1（入れ替え元）:</label>
+                <select
+                  value={swapA}
+                  onChange={(e) => setSwapA(Number(e.target.value))}
+                  className="w-full bg-slate-950 text-slate-200 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-indigo-500 font-medium"
+                >
+                  {result.schedule.map((item, i) => (
+                    <option key={i} value={i}>
+                      #{i + 1} {item.song.title} {item.song.artist ? `(${item.song.artist})` : ''} [{item.startTime}〜{item.endTime}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* アイコン */}
+              <div className="flex justify-center text-indigo-400">
+                <ArrowLeftRight className="w-5 h-5" />
+              </div>
+
+              {/* 曲B */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">曲 2（入れ替え先）:</label>
+                <select
+                  value={swapB}
+                  onChange={(e) => setSwapB(Number(e.target.value))}
+                  className="w-full bg-slate-950 text-slate-200 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-indigo-500 font-medium"
+                >
+                  {result.schedule.map((item, i) => (
+                    <option key={i} value={i}>
+                      #{i + 1} {item.song.title} {item.song.artist ? `(${item.song.artist})` : ''} [{item.startTime}〜{item.endTime}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {swapA === swapB && (
+                <p className="text-xs text-amber-400 font-medium">※ 同じ曲が選択されています。異なる曲を選択してください。</p>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-800 bg-slate-950 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSwapModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteSwap}
+                disabled={swapA === swapB}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
+              >
+                入れ替えを実行する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 確定共有モーダル */}
       {result && (
         <SharePublishModal
@@ -722,3 +972,4 @@ export default function StepResult({ result, onOptimize, isOptimizing }: StepRes
     </div>
   );
 }
+

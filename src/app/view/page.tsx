@@ -3,6 +3,12 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { decodeScheduleFromUrl, SharedScheduleData } from '@/utils/share';
 import AdInlineBanner from '@/components/AdInlineBanner';
+import ReceptionManagementModal from '@/components/ReceptionManagementModal';
+import { 
+  PricingTier, 
+  PaymentConfig, 
+  ParticipantCheckInRecord 
+} from '@/types';
 import { 
   Music, 
   Calendar, 
@@ -20,7 +26,13 @@ import {
   Moon,
   RotateCcw,
   Check,
-  FileText
+  FileText,
+  Radio,
+  ClipboardCheck,
+  Wine,
+  Guitar,
+  ArrowDownCircle,
+  QrCode
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -56,6 +68,22 @@ type TimelineItem =
       endTime: string;
     };
 
+function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+const DEFAULT_PRICING_CONFIG: PaymentConfig = {
+  pricingTiers: [
+    { id: '1', minSongs: 1, maxSongs: 2, price: 2000, label: '1〜2曲' },
+    { id: '2', minSongs: 3, maxSongs: 4, price: 2500, label: '3〜4曲' },
+    { id: '3', minSongs: 5, maxSongs: 999, price: 3000, label: '5曲以上' },
+  ],
+  rentalDailyFee: 500,
+  partyFee: 3500
+};
+
 function ParticipantViewContent() {
   const [data, setData] = useState<SharedScheduleData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +96,22 @@ function ParticipantViewContent() {
   // ライト / ダークモード切り替え
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
+  // 現在時刻 (分 & フォーマット文字列)
+  const [nowMinutes, setNowMinutes] = useState<number>(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+  const [nowFormatted, setNowFormatted] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  });
+  const [isAutoScroll, setIsAutoScroll] = useState<boolean>(true);
+
+  // 受付・集金管理モーダル状態 & データ永続化
+  const [isReceptionModalOpen, setIsReceptionModalOpen] = useState(false);
+  const [pricingConfig, setPricingConfig] = useState<PaymentConfig>(DEFAULT_PRICING_CONFIG);
+  const [records, setRecords] = useState<Record<string, ParticipantCheckInRecord>>({});
+
   // 表示カラム選択
   const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>({
     number: true,
@@ -78,6 +122,17 @@ function ParticipantViewContent() {
   });
   const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
+
+  // 定期タイマーで現在時刻を更新 (5秒ごと)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const d = new Date();
+      const mins = d.getHours() * 60 + d.getMinutes();
+      setNowMinutes(mins);
+      setNowFormatted(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // テーマ初期読み込み
   useEffect(() => {
@@ -97,6 +152,48 @@ function ParticipantViewContent() {
       }
     }
   }, []);
+
+  // イベント固有のストレージキー
+  const eventStorageKey = useMemo(() => {
+    if (!data) return 'session_reception_default';
+    return `session_reception_${data.title || 'event'}_${data.schedule.length}_${data.eventStartTime || ''}`;
+  }, [data]);
+
+  // 受付・支払いデータの復元
+  useEffect(() => {
+    if (typeof window !== 'undefined' && eventStorageKey) {
+      const savedConfig = localStorage.getItem(`${eventStorageKey}_pricing`);
+      if (savedConfig) {
+        try {
+          setPricingConfig(JSON.parse(savedConfig));
+        } catch (e) {
+          console.error('Failed to parse pricing from localStorage', e);
+        }
+      }
+      const savedRecords = localStorage.getItem(`${eventStorageKey}_records`);
+      if (savedRecords) {
+        try {
+          setRecords(JSON.parse(savedRecords));
+        } catch (e) {
+          console.error('Failed to parse records from localStorage', e);
+        }
+      }
+    }
+  }, [eventStorageKey]);
+
+  const handlePricingConfigChange = (newConfig: PaymentConfig) => {
+    setPricingConfig(newConfig);
+    if (typeof window !== 'undefined' && eventStorageKey) {
+      localStorage.setItem(`${eventStorageKey}_pricing`, JSON.stringify(newConfig));
+    }
+  };
+
+  const handleRecordsChange = (newRecords: Record<string, ParticipantCheckInRecord>) => {
+    setRecords(newRecords);
+    if (typeof window !== 'undefined' && eventStorageKey) {
+      localStorage.setItem(`${eventStorageKey}_records`, JSON.stringify(newRecords));
+    }
+  };
 
   // テーマ切り替え処理
   const toggleTheme = () => {
@@ -216,39 +313,6 @@ function ParticipantViewContent() {
     return Array.from(memberSet).sort((a, b) => a.localeCompare(b, 'ja'));
   }, [data]);
 
-  // 選択されたメンバーの出演サマリー計算
-  const selectedMemberSummary = useMemo(() => {
-    if (!data || !selectedMember) return null;
-
-    const songs: { songTitle: string; part: string; time: string; index: number }[] = [];
-    data.schedule.forEach((item, idx) => {
-      const matchMember = item.song.members.find(m => m.name === selectedMember);
-      if (matchMember) {
-        songs.push({
-          songTitle: item.song.title,
-          part: matchMember.part,
-          time: `${item.startTime}〜${item.endTime}`,
-          index: idx + 1
-        });
-      }
-    });
-
-    const partCounts = new Map<string, number>();
-    songs.forEach(s => {
-      partCounts.set(s.part, (partCounts.get(s.part) || 0) + 1);
-    });
-
-    const partsSummary = Array.from(partCounts.entries())
-      .map(([part, count]) => `${part} (${count}曲)`)
-      .join(' / ');
-
-    return {
-      totalSongs: songs.length,
-      partsSummary,
-      songs
-    };
-  }, [data, selectedMember]);
-
   // タイムライン全体（曲 + 休憩）の構築
   const fullTimeline = useMemo<TimelineItem[]>(() => {
     if (!data) return [];
@@ -283,23 +347,166 @@ function ParticipantViewContent() {
     return items;
   }, [data]);
 
-  // フィルタリングされたタイムライン項目（メンバー・検索ワード適用時も休憩は必ず保持）
+  // 現在の進行ステータス判定（現在時刻に連動）
+  const currentProgress = useMemo(() => {
+    if (!data || data.schedule.length === 0) return null;
+
+    const eventStart = data.eventStartTime ? parseTimeToMinutes(data.eventStartTime) : parseTimeToMinutes(data.schedule[0].startTime);
+    const openingEnd = data.openingEndTime ? parseTimeToMinutes(data.openingEndTime) : eventStart;
+    const songsEnd = data.schedule.length > 0 ? parseTimeToMinutes(data.schedule[data.schedule.length - 1].endTime) : openingEnd;
+    const eventEnd = data.eventEndTime ? parseTimeToMinutes(data.eventEndTime) : (songsEnd + 15);
+
+    // 開場前
+    if (nowMinutes < eventStart) {
+      const remaining = eventStart - nowMinutes;
+      return {
+        status: 'before' as const,
+        label: '開場前・準備中',
+        detail: `開始まであと ${remaining} 分 (${data.eventStartTime || data.schedule[0].startTime} 予定)`,
+        activeTimelineId: null,
+        activeOriginalIndex: -1
+      };
+    }
+
+    // オープニング中
+    if (data.eventStartTime && data.openingEndTime && nowMinutes >= eventStart && nowMinutes < openingEnd) {
+      const remaining = openingEnd - nowMinutes;
+      return {
+        status: 'opening' as const,
+        label: '🎪 集合・機材セッティング中',
+        detail: `1曲目開始まであと ${remaining} 分 (〜${data.openingEndTime})`,
+        activeTimelineId: 'opening',
+        activeOriginalIndex: -1
+      };
+    }
+
+    // 各曲または休憩の判定
+    for (let idx = 0; idx < fullTimeline.length; idx++) {
+      const tItem = fullTimeline[idx];
+      if (tItem.type === 'song') {
+        const sStart = parseTimeToMinutes(tItem.item.startTime);
+        const sEnd = parseTimeToMinutes(tItem.item.endTime);
+        if (nowMinutes >= sStart && nowMinutes < sEnd) {
+          const remaining = sEnd - nowMinutes;
+          return {
+            status: 'playing' as const,
+            label: `🔴 現在演奏中: #${tItem.originalIndex + 1} ${tItem.item.song.title}`,
+            detail: `残り約 ${remaining} 分 (〜${tItem.item.endTime})`,
+            activeTimelineId: tItem.id,
+            activeOriginalIndex: tItem.originalIndex
+          };
+        }
+      } else if (tItem.type === 'break') {
+        const bStart = parseTimeToMinutes(tItem.startTime);
+        const bEnd = parseTimeToMinutes(tItem.endTime);
+        if (nowMinutes >= bStart && nowMinutes < bEnd) {
+          const remaining = bEnd - nowMinutes;
+          return {
+            status: 'break' as const,
+            label: '☕ 休憩・セット転換中',
+            detail: `次曲まであと約 ${remaining} 分 (〜${tItem.endTime})`,
+            activeTimelineId: tItem.id,
+            activeOriginalIndex: -1
+          };
+        }
+      }
+    }
+
+    // 撤収中
+    if (nowMinutes >= songsEnd && nowMinutes < eventEnd) {
+      const remaining = eventEnd - nowMinutes;
+      return {
+        status: 'closing' as const,
+        label: '🏁 全曲演奏終了・片付け・完全撤収中',
+        detail: `完全撤収まであと ${remaining} 分 (〜${data.eventEndTime})`,
+        activeTimelineId: 'closing',
+        activeOriginalIndex: -1
+      };
+    }
+
+    // イベント終了後
+    if (nowMinutes >= eventEnd) {
+      return {
+        status: 'finished' as const,
+        label: '✨ 本日の全セッション終了',
+        detail: 'お疲れ様でした！',
+        activeTimelineId: null,
+        activeOriginalIndex: -1
+      };
+    }
+
+    return null;
+  }, [data, fullTimeline, nowMinutes]);
+
+  // 現在演奏中の要素へスクロール
+  const scrollToActiveSong = () => {
+    if (!currentProgress?.activeTimelineId) return;
+    const el = document.getElementById(`timeline-${currentProgress.activeTimelineId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  // 自動追従が有効な場合、曲進行時に自動スクロール
+  useEffect(() => {
+    if (isAutoScroll && currentProgress?.activeTimelineId) {
+      scrollToActiveSong();
+    }
+  }, [currentProgress?.activeTimelineId, isAutoScroll]);
+
+  // 選択されたメンバーの出演サマリー計算
+  const selectedMemberSummary = useMemo(() => {
+    if (!data || !selectedMember) return null;
+
+    const songs: { songTitle: string; part: string; time: string; index: number; hasRental: boolean }[] = [];
+    data.schedule.forEach((item, idx) => {
+      const matchMember = item.song.members.find(m => m.name === selectedMember);
+      if (matchMember) {
+        songs.push({
+          songTitle: item.song.title,
+          part: matchMember.part,
+          time: `${item.startTime}〜${item.endTime}`,
+          index: idx + 1,
+          hasRental: Boolean(item.song.rental && item.song.rental !== 'なし' && item.song.rental !== '-')
+        });
+      }
+    });
+
+    const partCounts = new Map<string, number>();
+    songs.forEach(s => {
+      partCounts.set(s.part, (partCounts.get(s.part) || 0) + 1);
+    });
+
+    const partsSummary = Array.from(partCounts.entries())
+      .map(([part, count]) => `${part} (${count}曲)`)
+      .join(' / ');
+
+    const hasRental = songs.some(s => s.hasRental);
+    const rec = records[selectedMember];
+
+    return {
+      totalSongs: songs.length,
+      partsSummary,
+      songs,
+      hasRental,
+      record: rec
+    };
+  }, [data, selectedMember, records]);
+
+  // フィルタリングされたタイムライン項目
   const filteredTimeline = useMemo<TimelineItem[]>(() => {
     if (!fullTimeline.length) return [];
 
     return fullTimeline.filter(tItem => {
       if (tItem.type === 'break') {
-        // 休憩は名前ソートや検索時にも必ず保持して表示する
         return true;
       }
 
       const s = tItem.item.song;
-      // メンバー絞り込み
       if (selectedMember) {
         const isMemberInSong = s.members.some(m => m.name === selectedMember);
         if (!isMemberInSong) return false;
       }
-      // 検索ワード絞り込み
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const titleMatch = s.title.toLowerCase().includes(q);
@@ -312,7 +519,7 @@ function ParticipantViewContent() {
     });
   }, [fullTimeline, selectedMember, searchQuery]);
 
-  // 現在表示されているカラム数（colSpan計算用）
+  // 現在表示されているカラム数
   const visibleColumnCount = useMemo(() => {
     return Object.values(visibleColumns).filter(Boolean).length;
   }, [visibleColumns]);
@@ -348,6 +555,27 @@ function ParticipantViewContent() {
       if (category === 'インスト' || category === 'セッション') return 'bg-purple-100 text-purple-700 border-purple-300';
       return 'bg-slate-100 text-slate-600 border-slate-300';
     }
+  };
+
+  // 参加者セルフチェックイン処理
+  const handleSelfCheckIn = (memberName: string) => {
+    const current = records[memberName] || {
+      memberName,
+      checkedIn: false,
+      paid: false,
+      partyJoined: false,
+      hasRental: false,
+      songCount: selectedMemberSummary?.totalSongs || 1,
+      calculatedFee: 2000
+    };
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const updated = {
+      ...current,
+      checkedIn: true,
+      checkInTime: timeStr
+    };
+    handleRecordsChange({ ...records, [memberName]: updated });
   };
 
   const handlePrint = () => {
@@ -432,9 +660,14 @@ function ParticipantViewContent() {
           <tbody className={`divide-y ${isDark ? 'divide-slate-800/60 bg-slate-950' : 'divide-slate-200 bg-white'}`}>
             {/* オープニング枠 */}
             {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
-              <tr className={`print-opening-row ${
-                isDark ? 'bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300' : 'bg-indigo-50/80 border-b border-indigo-200 text-indigo-900'
-              }`}>
+              <tr 
+                id="timeline-opening"
+                className={`print-opening-row transition-all ${
+                  currentProgress?.activeTimelineId === 'opening' ? 'ring-2 ring-indigo-500 font-bold scale-[1.005]' : ''
+                } ${
+                  isDark ? 'bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300' : 'bg-indigo-50/80 border-b border-indigo-200 text-indigo-900'
+                }`}
+              >
                 {visibleColumns.number && (
                   <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'}`}>
                     -
@@ -443,10 +676,15 @@ function ParticipantViewContent() {
                 {visibleColumns.time && (
                   <td className="px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px]">
                     <div>{data.eventStartTime} - {data.openingEndTime}</div>
-                    <div className="mt-0.5">
+                    <div className="mt-0.5 flex items-center gap-1">
                       <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
                         準備
                       </span>
+                      {currentProgress?.activeTimelineId === 'opening' && (
+                        <span className="inline-flex items-center text-[9px] text-pink-400 font-bold animate-pulse">
+                          🔴 今ここ
+                        </span>
+                      )}
                     </div>
                   </td>
                 )}
@@ -457,11 +695,19 @@ function ParticipantViewContent() {
             )}
 
             {filteredTimeline.map((item) => {
+              const isItemActive = currentProgress?.activeTimelineId === item.id;
+
               if (item.type === 'break') {
                 return (
-                  <tr key={item.id} className={`print-break-row ${
-                    isDark ? 'bg-emerald-950/30 border-y border-emerald-500/30' : 'bg-emerald-50 border-y border-emerald-200'
-                  }`}>
+                  <tr 
+                    key={item.id} 
+                    id={`timeline-${item.id}`}
+                    className={`print-break-row transition-all ${
+                      isItemActive ? 'ring-2 ring-emerald-500 font-bold' : ''
+                    } ${
+                      isDark ? 'bg-emerald-950/30 border-y border-emerald-500/30' : 'bg-emerald-50 border-y border-emerald-200'
+                    }`}
+                  >
                     {visibleColumns.number && (
                       <td className={`px-2.5 py-2.5 text-center font-mono text-emerald-500 dark:text-emerald-400 font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'}`}>
                         ☕
@@ -469,7 +715,12 @@ function ParticipantViewContent() {
                     )}
                     {visibleColumns.time && (
                       <td className="px-3 py-2.5 font-mono whitespace-nowrap font-bold text-xs text-emerald-700 dark:text-emerald-300">
-                        {item.startTime} - {item.endTime}
+                        <div>{item.startTime} - {item.endTime}</div>
+                        {isItemActive && (
+                          <div className="mt-0.5 text-[9px] text-pink-400 font-bold animate-pulse">
+                            🔴 休憩中
+                          </div>
+                        )}
                       </td>
                     )}
                     <td 
@@ -491,8 +742,11 @@ function ParticipantViewContent() {
               return (
                 <tr 
                   key={item.id} 
+                  id={`timeline-${item.id}`}
                   className={`transition-colors group ${
-                    isUserSong 
+                    isItemActive
+                      ? isDark ? 'bg-indigo-950/80 font-semibold ring-2 ring-pink-500/80' : 'bg-pink-50 font-semibold ring-2 ring-pink-500'
+                      : isUserSong 
                       ? isDark ? 'bg-indigo-950/40 font-medium' : 'bg-indigo-50/90 font-medium'
                       : isDark ? 'hover:bg-slate-900/60' : 'hover:bg-slate-50'
                   }`}
@@ -500,7 +754,9 @@ function ParticipantViewContent() {
                   {/* 曲番号 (#) */}
                   {visibleColumns.number && (
                     <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'} ${
-                      isUserSong 
+                      isItemActive
+                        ? 'bg-pink-600 text-white'
+                        : isUserSong 
                         ? isDark ? 'bg-indigo-950/80 text-indigo-200' : 'bg-indigo-100 text-indigo-900'
                         : isDark ? 'bg-slate-950 text-slate-400 group-hover:bg-slate-900' : 'bg-white text-slate-500 group-hover:bg-slate-50'
                     }`}>
@@ -511,15 +767,22 @@ function ParticipantViewContent() {
                   {/* 時間・カテゴリ（統合） */}
                   {visibleColumns.time && (
                     <td className={`px-3 py-3 font-mono whitespace-nowrap font-medium ${
-                      isUserSong 
+                      isItemActive
+                        ? isDark ? 'text-pink-300 font-bold' : 'text-pink-700 font-bold'
+                        : isUserSong 
                         ? isDark ? 'text-white' : 'text-indigo-950 font-bold'
                         : isDark ? 'text-slate-200' : 'text-slate-800'
                     }`}>
                       <div>{item.item.startTime} - {item.item.endTime}</div>
-                      <div className="mt-1">
+                      <div className="mt-1 flex items-center gap-1">
                         <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
                           {category}
                         </span>
+                        {isItemActive && (
+                          <span className="inline-flex items-center text-[9px] bg-pink-500/20 text-pink-400 border border-pink-500/40 px-1 py-0.2 rounded font-bold animate-pulse">
+                            🔴 演奏中
+                          </span>
+                        )}
                       </div>
                     </td>
                   )}
@@ -582,9 +845,14 @@ function ParticipantViewContent() {
 
             {/* 全曲終了・完全撤収枠 */}
             {!selectedMember && data.eventEndTime && (
-              <tr className={`print-closing-row ${
-                isDark ? 'bg-purple-950/30 border-t border-purple-500/30 text-purple-300' : 'bg-purple-50/80 border-t border-purple-200 text-purple-900'
-              }`}>
+              <tr 
+                id="timeline-closing"
+                className={`print-closing-row transition-all ${
+                  currentProgress?.activeTimelineId === 'closing' ? 'ring-2 ring-purple-500 font-bold' : ''
+                } ${
+                  isDark ? 'bg-purple-950/30 border-t border-purple-500/30 text-purple-300' : 'bg-purple-50/80 border-t border-purple-200 text-purple-900'
+                }`}
+              >
                 {visibleColumns.number && (
                   <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'}`}>
                     -
@@ -643,14 +911,28 @@ function ParticipantViewContent() {
         </div>
       </div>
 
-      {/* トップアクションバー（ライト/ダークモード切替 & 作成ツールリンク） */}
-      <div className="no-print flex items-center justify-between gap-3 mb-4">
+      {/* トップアクションバー（ライト/ダークモード切替 & 受付管理ボタン） */}
+      <div className="no-print flex items-center justify-between gap-3 mb-3">
         <div className="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 text-xs px-3 py-1 rounded-full font-semibold">
           <Sparkles className="w-3.5 h-3.5" />
           参加者専用タイムテーブル
         </div>
 
         <div className="flex items-center gap-2">
+          {/* 受付・集金管理ボタン */}
+          <button
+            type="button"
+            onClick={() => setIsReceptionModalOpen(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+              isDark 
+                ? 'bg-gradient-to-r from-indigo-700 to-purple-700 hover:from-indigo-600 hover:to-purple-600 text-white' 
+                : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+            }`}
+          >
+            <ClipboardCheck className="w-3.5 h-3.5" />
+            <span>受付・集金管理</span>
+          </button>
+
           {/* テーマ切り替えスイッチ */}
           <button
             type="button"
@@ -676,6 +958,66 @@ function ParticipantViewContent() {
           </button>
         </div>
       </div>
+
+      {/* 🔴 固定 / 追従型 現在時刻・リアルタイムステータスバー */}
+      {currentProgress && (
+        <div className={`no-print sticky top-2 z-40 mb-5 p-3 rounded-2xl border backdrop-blur-md shadow-xl flex items-center justify-between gap-3 flex-wrap transition-all ${
+          isDark 
+            ? 'bg-slate-900/90 border-indigo-500/40 text-slate-100 shadow-indigo-950/50' 
+            : 'bg-white/95 border-indigo-200 text-slate-900 shadow-indigo-100'
+        }`}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative flex items-center justify-center">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span>
+              </span>
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-xs font-bold px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-400 border border-pink-500/30">
+                  現在 {nowFormatted}
+                </span>
+                <span className="text-xs font-bold truncate">
+                  {currentProgress.label}
+                </span>
+              </div>
+              <p className={`text-[11px] mt-0.5 truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {currentProgress.detail}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* 現在地にジャンプボタン */}
+            {currentProgress.activeTimelineId && (
+              <button
+                type="button"
+                onClick={scrollToActiveSong}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-pink-600 hover:bg-pink-500 text-white shadow-md active:scale-95 transition-all"
+              >
+                <ArrowDownCircle className="w-3.5 h-3.5" />
+                <span>今ここへ移動</span>
+              </button>
+            )}
+
+            {/* 自動追従トグル */}
+            <button
+              type="button"
+              onClick={() => setIsAutoScroll(!isAutoScroll)}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                isAutoScroll
+                  ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/40 font-bold'
+                  : isDark ? 'text-slate-400 border-slate-800 bg-slate-950' : 'text-slate-500 border-slate-200 bg-slate-50'
+              }`}
+              title="演奏曲の時間に合わせて自動的にスクロール追従します"
+            >
+              自動追従: {isAutoScroll ? 'ON' : 'OFF'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 画面用ヘッダー */}
       <header className="no-print text-center space-y-2 mb-6">
@@ -715,7 +1057,7 @@ function ParticipantViewContent() {
         <div className="flex items-center justify-between mb-3">
           <h2 className={`text-xs sm:text-sm font-bold flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
             <Users className="w-4 h-4 text-indigo-500" />
-            <span>名前を選択して自分の出演曲をハイライト</span>
+            <span>名前を選択して自分の出演曲・受付チケットを確認</span>
           </h2>
           {selectedMember && (
             <button
@@ -762,28 +1104,137 @@ function ParticipantViewContent() {
           ))}
         </div>
 
-        {/* 選択メンバーのサマリーカード */}
+        {/* 選択メンバーのチケット・出演サマリーカード */}
         {selectedMember && selectedMemberSummary && (
-          <div className={`mt-4 p-3.5 border rounded-2xl animate-in fade-in duration-200 flex flex-wrap items-center justify-between gap-3 ${
+          <div className={`mt-4 p-4 sm:p-5 border rounded-2xl animate-in fade-in duration-200 space-y-4 ${
             isDark 
               ? 'bg-gradient-to-r from-indigo-950/60 to-purple-950/60 border-indigo-500/40' 
-              : 'bg-indigo-50/70 border-indigo-200'
+              : 'bg-indigo-50/80 border-indigo-200'
           }`}>
-            <div>
-              <div className={`text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-900'}`}>
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span>{selectedMember} さんの出演情報</span>
+            {/* ヘッダー情報 */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className={`text-base font-bold flex items-center gap-2 ${isDark ? 'text-indigo-200' : 'text-indigo-950'}`}>
+                  <CheckCircle2 className="w-5 h-5 text-indigo-400" />
+                  <span>{selectedMember} さんの受付・入場チケット</span>
+                </div>
+                <p className={`text-xs mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  出演: <strong className="text-white bg-indigo-600 px-2 py-0.5 rounded font-mono font-bold">{selectedMemberSummary.totalSongs}曲</strong> ｜ 担当パート: {selectedMemberSummary.partsSummary}
+                </p>
               </div>
-              <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                合計 <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-indigo-700'}`}>{selectedMemberSummary.totalSongs}</span> 曲出演 ｜ 担当: {selectedMemberSummary.partsSummary}
-              </p>
+
+              {/* 入場状態バッジ */}
+              <div>
+                {selectedMemberSummary.record?.checkedIn ? (
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-md">
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>🎉 入場完了 ({selectedMemberSummary.record.checkInTime || '済'})</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>未チェックイン</span>
+                  </span>
+                )}
+              </div>
             </div>
-            <div className={`text-[11px] px-3 py-1.5 rounded-xl border ${
-              isDark 
-                ? 'text-slate-400 bg-slate-900/80 border-slate-800' 
-                : 'text-slate-600 bg-white border-slate-200 shadow-sm'
-            }`}>
-              該当曲 + 休憩時間を表示中
+
+            {/* 2ステップ受付手続きパネル */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              {/* STEP 1: お支払い */}
+              <div className={`p-3.5 rounded-xl border flex flex-col justify-between gap-2 ${
+                selectedMemberSummary.record?.paid
+                  ? isDark ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-emerald-50 border-emerald-300'
+                  : isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                      STEP 1: 参加費のお支払い
+                    </span>
+                    {selectedMemberSummary.record?.paid ? (
+                      <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> 支払済
+                      </span>
+                    ) : (
+                      <span className="text-rose-400 text-xs font-bold">未払い</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-extrabold font-mono text-indigo-400">
+                      ¥{(selectedMemberSummary.record?.calculatedFee || 2000).toLocaleString()}
+                    </span>
+                    <div className="flex gap-1">
+                      {selectedMemberSummary.hasRental && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 font-semibold">
+                          レンタル加算込
+                        </span>
+                      )}
+                      {selectedMemberSummary.record?.partyJoined && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold">
+                          懇親会込
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <p className={`text-[11px] ${
+                  selectedMemberSummary.record?.paid ? 'text-emerald-400' : isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  {selectedMemberSummary.record?.paid 
+                    ? '✓ 受付にて参加費の受取が完了しています' 
+                    : '※ 受付カウンターにてスタッフへお支払いください'}
+                </p>
+              </div>
+
+              {/* STEP 2: QRチェックイン */}
+              <div className={`p-3.5 rounded-xl border flex flex-col justify-between gap-2 ${
+                selectedMemberSummary.record?.checkedIn
+                  ? isDark ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-emerald-50 border-emerald-300'
+                  : isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                      STEP 2: 入場チェックイン
+                    </span>
+                    {selectedMemberSummary.record?.checkedIn && (
+                      <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> 入場済
+                      </span>
+                    )}
+                  </div>
+
+                  <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                    {selectedMemberSummary.record?.checkedIn
+                      ? `✓ 入場チェックインが完了しました (${selectedMemberSummary.record.checkInTime})`
+                      : selectedMemberSummary.record?.paid
+                      ? 'お支払いを確認しました！下のボタンを押して入場完了にしてください。'
+                      : 'お支払い後、受付のQRコード読み取りまたは下のボタンでチェックインします。'}
+                  </p>
+                </div>
+
+                {!selectedMemberSummary.record?.checkedIn && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelfCheckIn(selectedMember)}
+                    className={`w-full py-2 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 ${
+                      selectedMemberSummary.record?.paid
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white animate-pulse'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                    }`}
+                  >
+                    <QrCode className="w-4 h-4" />
+                    <span>
+                      {selectedMemberSummary.record?.paid 
+                        ? '支払い確認済・入場チェックインする' 
+                        : '支払いを済ませてチェックインする'}
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -938,11 +1389,16 @@ function ParticipantViewContent() {
           <div className="no-print space-y-3">
             {/* 集合・セッティング・オープニング枠 */}
             {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
-              <div className={`rounded-2xl p-3 sm:p-3.5 border flex items-center justify-between gap-3 shadow-sm transition-colors ${
-                isDark 
-                  ? 'bg-indigo-950/30 border-indigo-500/30' 
-                  : 'bg-indigo-50/80 border-indigo-200'
-              }`}>
+              <div 
+                id="timeline-opening"
+                className={`rounded-2xl p-3 sm:p-3.5 border flex items-center justify-between gap-3 shadow-sm transition-all ${
+                  currentProgress?.activeTimelineId === 'opening' ? 'ring-2 ring-indigo-500 shadow-lg font-bold' : ''
+                } ${
+                  isDark 
+                    ? 'bg-indigo-950/30 border-indigo-500/30' 
+                    : 'bg-indigo-50/80 border-indigo-200'
+                }`}
+              >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
                     isDark ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border border-indigo-300'
@@ -960,22 +1416,32 @@ function ParticipantViewContent() {
                     集合・機材セッティング・オープニング
                   </span>
                 </div>
-                <div className="shrink-0">
+                <div className="shrink-0 flex items-center gap-1.5">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                     isDark ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-100 text-indigo-700 border-indigo-300'
                   }`}>
                     準備
                   </span>
+                  {currentProgress?.activeTimelineId === 'opening' && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/20 text-pink-400 border border-pink-500/40 animate-pulse">
+                      🔴 今ここ
+                    </span>
+                  )}
                 </div>
               </div>
             )}
 
             {filteredTimeline.map((item) => {
+              const isItemActive = currentProgress?.activeTimelineId === item.id;
+
               if (item.type === 'break') {
                 return (
                   <div 
                     key={item.id}
-                    className={`p-3 sm:p-3.5 border rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 shadow-sm transition-colors ${
+                    id={`timeline-${item.id}`}
+                    className={`p-3 sm:p-3.5 border rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 shadow-sm transition-all ${
+                      isItemActive ? 'ring-2 ring-emerald-500 shadow-md font-bold' : ''
+                    } ${
                       isDark 
                         ? 'bg-emerald-950/25 border-emerald-500/30 text-emerald-300' 
                         : 'bg-emerald-50 border-emerald-200 text-emerald-800'
@@ -998,12 +1464,17 @@ function ParticipantViewContent() {
                         休憩・インターバル（セット転換＆進行調整）
                       </span>
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex items-center gap-1.5">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                         isDark ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-emerald-100 text-emerald-700 border-emerald-300'
                       }`}>
                         休憩
                       </span>
+                      {isItemActive && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/20 text-pink-400 border border-pink-500/40 animate-pulse">
+                          🔴 休憩中
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -1016,8 +1487,13 @@ function ParticipantViewContent() {
               return (
                 <div 
                   key={item.id}
+                  id={`timeline-${item.id}`}
                   className={`rounded-2xl p-4 transition-all border shadow-sm ${
-                    isUserSong
+                    isItemActive
+                      ? isDark
+                        ? 'bg-gradient-to-r from-indigo-950/80 to-purple-950/80 border-pink-500/80 ring-2 ring-pink-500 shadow-xl shadow-pink-500/10 scale-[1.01]'
+                        : 'bg-pink-50/90 border-pink-400 ring-2 ring-pink-500 shadow-lg scale-[1.01]'
+                      : isUserSong
                       ? isDark
                         ? 'bg-indigo-950/40 border-indigo-500/60 shadow-lg shadow-indigo-500/10 scale-[1.01]'
                         : 'bg-indigo-50/90 border-indigo-400 shadow-md ring-1 ring-indigo-400/40 scale-[1.01]'
@@ -1032,16 +1508,27 @@ function ParticipantViewContent() {
                   }`}>
                     <div className="flex items-center gap-2">
                       <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center ${
-                        isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
+                        isItemActive
+                          ? 'bg-pink-600 text-white shadow-md'
+                          : isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
                       }`}>
                         {item.originalIndex + 1}
                       </span>
-                      <span className={`text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                      <span className={`text-xs font-mono font-bold ${
+                        isItemActive 
+                          ? isDark ? 'text-pink-300' : 'text-pink-700'
+                          : isDark ? 'text-slate-100' : 'text-slate-900'
+                      }`}>
                         {item.item.startTime} - {item.item.endTime}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1.5">
+                      {isItemActive && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/20 text-pink-400 border border-pink-500/40 animate-pulse">
+                          🔴 現在演奏中
+                        </span>
+                      )}
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
                         {category}
                       </span>
@@ -1110,11 +1597,16 @@ function ParticipantViewContent() {
 
             {/* 全曲終了・完全撤収枠 */}
             {!selectedMember && data.eventEndTime && (
-              <div className={`rounded-2xl p-3 sm:p-3.5 border flex items-center justify-between gap-3 shadow-sm transition-colors ${
-                isDark 
-                  ? 'bg-purple-950/30 border-purple-500/30' 
-                  : 'bg-purple-50/80 border-purple-200'
-              }`}>
+              <div 
+                id="timeline-closing"
+                className={`rounded-2xl p-3 sm:p-3.5 border flex items-center justify-between gap-3 shadow-sm transition-all ${
+                  currentProgress?.activeTimelineId === 'closing' ? 'ring-2 ring-purple-500 font-bold' : ''
+                } ${
+                  isDark 
+                    ? 'bg-purple-950/30 border-purple-500/30' 
+                    : 'bg-purple-50/80 border-purple-200'
+                }`}
+              >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
                     isDark ? 'bg-purple-900/60 text-purple-300 border border-purple-500/30' : 'bg-purple-100 text-purple-800 border border-purple-300'
@@ -1155,6 +1647,19 @@ function ParticipantViewContent() {
       <div className="no-print mt-8">
         <AdInlineBanner variant="standard" />
       </div>
+
+      {/* 受付・集金管理モーダル */}
+      <ReceptionManagementModal
+        isOpen={isReceptionModalOpen}
+        onClose={() => setIsReceptionModalOpen(false)}
+        allMembers={allMembers}
+        scheduleData={data}
+        isDark={isDark}
+        records={records}
+        onRecordsChange={handleRecordsChange}
+        pricingConfig={pricingConfig}
+        onPricingConfigChange={handlePricingConfigChange}
+      />
 
       {/* フッター */}
       <footer className={`no-print mt-12 text-center text-xs space-y-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>

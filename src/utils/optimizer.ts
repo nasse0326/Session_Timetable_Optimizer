@@ -415,3 +415,16 @@ export function optimizeSchedule(
 
   return bestResult!;
 }
+
+/**
+ * 手動で曲順を並び替えた際に、時間・休憩・制約警告・スコアを即座に再計算する関数
+ */
+export function recalculateSchedule(
+  songs: Song[],
+  constraints: MemberConstraint[],
+  config: SessionConfig
+): OptimizationResult {
+  const schedule = generateSchedule(songs, config);
+  return evaluateSchedule(schedule, constraints, config);
+}
+
