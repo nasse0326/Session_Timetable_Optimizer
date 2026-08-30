@@ -7,7 +7,7 @@ import {
   ParticipantCheckInRecord 
 } from '@/types';
 import { SharedScheduleData } from '@/utils/share';
-import { QRCodeCanvas } from 'qrcode.react';
+import VenueCheckInQrModal from '@/components/VenueCheckInQrModal';
 import {
   X,
   Search,
@@ -1093,63 +1093,12 @@ export default function ReceptionManagementModal({
       </div>
 
       {/* 🖨️ 会場受付デスク用 QRコード拡大表示モーダル */}
-      {isVenueQrOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-150">
-          <div className={`border rounded-3xl w-full max-w-md shadow-2xl p-6 text-center space-y-4 ${
-            isDark ? 'bg-slate-900 border-indigo-500/40 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className="flex items-center justify-between">
-              <h4 className="text-base font-bold flex items-center gap-1.5">
-                <QrCode className="w-5 h-5 text-indigo-500" />
-                <span>受付チェックイン用 QRコード</span>
-              </h4>
-              <button
-                type="button"
-                onClick={() => setIsVenueQrOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              受付デスクに印刷または提示してください。参加者が参加費をお支払い後、スマホカメラで読み取って入場完了にします。
-            </p>
-
-            <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-inner my-2">
-              <div ref={qrRef} className="p-2">
-                <QRCodeCanvas 
-                  value={currentUrl} 
-                  size={190} 
-                  level="L" 
-                  marginSize={1}
-                />
-              </div>
-              <span className="text-[11px] font-bold text-slate-800 mt-2">
-                📱 カメラで読み取ってチェックイン
-              </span>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={handleDownloadVenueQr}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition-all active:scale-95"
-              >
-                <Download className="w-4 h-4" />
-                <span>QR画像をダウンロード</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsVenueQrOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200"
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <VenueCheckInQrModal
+        isOpen={isVenueQrOpen}
+        onClose={() => setIsVenueQrOpen(false)}
+        eventTitle={scheduleData.title}
+        isDark={isDark}
+      />
     </div>
   );
 }

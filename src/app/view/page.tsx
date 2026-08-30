@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { decodeScheduleFromUrl, SharedScheduleData } from '@/utils/share';
 import AdInlineBanner from '@/components/AdInlineBanner';
 import ReceptionManagementModal from '@/components/ReceptionManagementModal';
+import VenueCheckInQrModal from '@/components/VenueCheckInQrModal';
 import { 
   PricingTier, 
   PaymentConfig, 
@@ -109,6 +110,7 @@ function ParticipantViewContent() {
 
   // 受付・集金管理モーダル状態 & データ永続化
   const [isReceptionModalOpen, setIsReceptionModalOpen] = useState(false);
+  const [isVenueQrModalOpen, setIsVenueQrModalOpen] = useState(false);
   const [pricingConfig, setPricingConfig] = useState<PaymentConfig>(DEFAULT_PRICING_CONFIG);
   const [records, setRecords] = useState<Record<string, ParticipantCheckInRecord>>({});
 
@@ -919,6 +921,17 @@ function ParticipantViewContent() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* 会場受付用QRコードボタン */}
+          <button
+            type="button"
+            onClick={() => setIsVenueQrModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/40 transition-all shadow-sm active:scale-95"
+            title="受付デスクに掲示・参加者がスキャンするQRコードを表示"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>受付QR表示</span>
+          </button>
+
           {/* 受付・集金管理ボタン */}
           <button
             type="button"
@@ -1217,22 +1230,35 @@ function ParticipantViewContent() {
                 </div>
 
                 {!selectedMemberSummary.record?.checkedIn && (
-                  <button
-                    type="button"
-                    onClick={() => handleSelfCheckIn(selectedMember)}
-                    className={`w-full py-2 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 ${
-                      selectedMemberSummary.record?.paid
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white animate-pulse'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                    }`}
-                  >
-                    <QrCode className="w-4 h-4" />
-                    <span>
-                      {selectedMemberSummary.record?.paid 
-                        ? '支払い確認済・入場チェックインする' 
-                        : '支払いを済ませてチェックインする'}
-                    </span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleSelfCheckIn(selectedMember)}
+                      className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 ${
+                        selectedMemberSummary.record?.paid
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white animate-pulse'
+                          : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      }`}
+                    >
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>
+                        {selectedMemberSummary.record?.paid 
+                          ? '支払い確認済・入場完了にする' 
+                          : '支払いを済ませて入場完了にする'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsVenueQrModalOpen(true)}
+                      className={`p-2 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all ${
+                        isDark ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700' : 'bg-white hover:bg-slate-100 text-indigo-600 border-slate-300'
+                      }`}
+                      title="会場受付用QRコードを表示"
+                    >
+                      <QrCode className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -1659,6 +1685,14 @@ function ParticipantViewContent() {
         onRecordsChange={handleRecordsChange}
         pricingConfig={pricingConfig}
         onPricingConfigChange={handlePricingConfigChange}
+      />
+
+      {/* 会場受付用QRコードモーダル */}
+      <VenueCheckInQrModal
+        isOpen={isVenueQrModalOpen}
+        onClose={() => setIsVenueQrModalOpen(false)}
+        eventTitle={data?.title}
+        isDark={isDark}
       />
 
       {/* フッター */}
