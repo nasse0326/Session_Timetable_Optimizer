@@ -5,6 +5,7 @@ import { decodeScheduleFromUrl, SharedScheduleData } from '@/utils/share';
 import AdInlineBanner from '@/components/AdInlineBanner';
 import ReceptionManagementModal from '@/components/ReceptionManagementModal';
 import VenueCheckInQrModal from '@/components/VenueCheckInQrModal';
+import { aggregateMemberRentalInfo } from '@/utils/rental';
 import { 
   PricingTier, 
   PaymentConfig, 
@@ -460,7 +461,10 @@ function ParticipantViewContent() {
   const selectedMemberSummary = useMemo(() => {
     if (!data || !selectedMember) return null;
 
-    const songs: { songTitle: string; part: string; time: string; index: number; hasRental: boolean }[] = [];
+    const songs: { songTitle: string; part: string; time: string; index: number }[] = [];
+    const autoRentalMap = aggregateMemberRentalInfo(data.schedule);
+    const autoRental = autoRentalMap.get(selectedMember);
+
     data.schedule.forEach((item, idx) => {
       const matchMember = item.song.members.find(m => m.name === selectedMember);
       if (matchMember) {
@@ -468,8 +472,7 @@ function ParticipantViewContent() {
           songTitle: item.song.title,
           part: matchMember.part,
           time: `${item.startTime}〜${item.endTime}`,
-          index: idx + 1,
-          hasRental: Boolean(item.song.rental && item.song.rental !== 'なし' && item.song.rental !== '-')
+          index: idx + 1
         });
       }
     });
@@ -483,17 +486,34 @@ function ParticipantViewContent() {
       .map(([part, count]) => `${part} (${count}曲)`)
       .join(' / ');
 
-    const hasRental = songs.some(s => s.hasRental);
     const rec = records[selectedMember];
+    const hasRental = rec?.hasRental !== undefined ? rec.hasRental : (autoRental?.hasRental || false);
+
+    // 金額計算
+    let tierPrice = 0;
+    for (const tier of pricingConfig.pricingTiers) {
+      if (songs.length >= tier.minSongs && songs.length <= tier.maxSongs) {
+        tierPrice = tier.price;
+        break;
+      }
+    }
+    if (tierPrice === 0 && pricingConfig.pricingTiers.length > 0) {
+      tierPrice = pricingConfig.pricingTiers[pricingConfig.pricingTiers.length - 1].price;
+    }
+    const rentalFee = hasRental ? pricingConfig.rentalDailyFee : 0;
+    const partyFee = rec?.partyJoined ? pricingConfig.partyFee : 0;
+    const calculatedFee = rec?.calculatedFee !== undefined ? rec.calculatedFee : (tierPrice + rentalFee + partyFee);
 
     return {
       totalSongs: songs.length,
       partsSummary,
       songs,
       hasRental,
+      rentalItems: autoRental?.rentalItems || [],
+      calculatedFee,
       record: rec
     };
-  }, [data, selectedMember, records]);
+  }, [data, selectedMember, records, pricingConfig]);
 
   // フィルタリングされたタイムライン項目
   const filteredTimeline = useMemo<TimelineItem[]>(() => {
@@ -1176,17 +1196,17 @@ function ParticipantViewContent() {
 
                   <div className="flex items-baseline gap-2">
                     <span className="text-xl font-extrabold font-mono text-indigo-400">
-                      ¥{(selectedMemberSummary.record?.calculatedFee || 2000).toLocaleString()}
+                      ¥{selectedMemberSummary.calculatedFee.toLocaleString()}
                     </span>
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {selectedMemberSummary.hasRental && (
                         <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 font-semibold">
-                          レンタル加算込
+                          レンタル加算 (+¥{pricingConfig.rentalDailyFee}{selectedMemberSummary.rentalItems.length ? `: ${selectedMemberSummary.rentalItems.join('/')}` : ''})
                         </span>
                       )}
                       {selectedMemberSummary.record?.partyJoined && (
                         <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold">
-                          懇親会込
+                          懇親会込 (+¥{pricingConfig.partyFee})
                         </span>
                       )}
                     </div>

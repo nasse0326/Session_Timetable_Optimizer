@@ -8,6 +8,7 @@ import {
 } from '@/types';
 import { SharedScheduleData } from '@/utils/share';
 import VenueCheckInQrModal from '@/components/VenueCheckInQrModal';
+import { aggregateMemberRentalInfo } from '@/utils/rental';
 import {
   X,
   Search,
@@ -68,13 +69,23 @@ export default function ReceptionManagementModal({
 
   // 会場QRコード表示モーダル状態
   const [isVenueQrOpen, setIsVenueQrOpen] = useState(false);
-  const qrRef = useRef<HTMLDivElement>(null);
+
+  // 元の曲リストから個人へのレンタル自動紐づけマップを構築
+  const autoRentalMap = useMemo(() => {
+    return aggregateMemberRentalInfo(scheduleData.schedule);
+  }, [scheduleData]);
 
   // 各メンバーの参加曲数・レンタル有無・パート一覧の集計
   const memberStats = useMemo(() => {
-    const stats = new Map<string, { songCount: number; hasRental: boolean; parts: string[] }>();
+    const stats = new Map<string, { songCount: number; hasRental: boolean; rentalItems: string[]; parts: string[] }>();
     allMembers.forEach(name => {
-      stats.set(name, { songCount: 0, hasRental: false, parts: [] });
+      const autoRental = autoRentalMap.get(name);
+      stats.set(name, {
+        songCount: 0,
+        hasRental: autoRental?.hasRental || false,
+        rentalItems: autoRental?.rentalItems || [],
+        parts: []
+      });
     });
 
     scheduleData.schedule.forEach(item => {
@@ -83,9 +94,6 @@ export default function ReceptionManagementModal({
         const entry = stats.get(m.name);
         if (entry) {
           entry.songCount += 1;
-          if (s.rental && s.rental.trim() && s.rental !== 'なし' && s.rental !== '無し' && s.rental !== '-') {
-            entry.hasRental = true;
-          }
           if (!entry.parts.includes(m.part)) {
             entry.parts.push(m.part);
           }
@@ -94,20 +102,21 @@ export default function ReceptionManagementModal({
     });
 
     return stats;
-  }, [allMembers, scheduleData]);
+  }, [allMembers, scheduleData, autoRentalMap]);
 
   // 金額再計算ヘルパー
   const calculateParticipantFee = (
     name: string, 
     customFee: number | undefined, 
     partyJoined: boolean,
+    hasRentalOverride?: boolean,
     config: PaymentConfig = pricingConfig
   ) => {
     if (customFee !== undefined && customFee >= 0) return customFee;
 
     const stats = memberStats.get(name);
     const songCount = stats?.songCount || 0;
-    const hasRental = stats?.hasRental || false;
+    const hasRental = hasRentalOverride !== undefined ? hasRentalOverride : (stats?.hasRental || false);
 
     let tierPrice = 0;
     for (const tier of config.pricingTiers) {
@@ -126,13 +135,13 @@ export default function ReceptionManagementModal({
     return tierPrice + rentalFee + partyFee;
   };
 
-  // 各レコードの取得（未初期化ならデフォルト値で生成）
+  // 各レコードの取得（未初期化なら元のリストからの自動紐づけ値で生成）
   const getRecord = (name: string): ParticipantCheckInRecord => {
     if (records[name]) return records[name];
     const stats = memberStats.get(name);
     const songCount = stats?.songCount || 0;
     const hasRental = stats?.hasRental || false;
-    const fee = calculateParticipantFee(name, undefined, false);
+    const fee = calculateParticipantFee(name, undefined, false, hasRental);
 
     return {
       memberName: name,
@@ -150,17 +159,24 @@ export default function ReceptionManagementModal({
     const current = getRecord(name);
     const updated = { ...current, ...partial };
     
-    // 金額再計算（partyJoinedやcustomFeeの変更時）
-    if ('partyJoined' in partial || 'customFee' in partial) {
+    // 金額再計算（partyJoined, hasRental, customFeeの変更時）
+    if ('partyJoined' in partial || 'hasRental' in partial || 'customFee' in partial) {
       updated.calculatedFee = calculateParticipantFee(
         name, 
         updated.customFee, 
-        updated.partyJoined
+        updated.partyJoined,
+        updated.hasRental
       );
     }
 
     const next = { ...records, [name]: updated };
     onRecordsChange(next);
+  };
+
+  // レンタル加算トグル（手動変更可能）
+  const handleToggleRental = (name: string) => {
+    const current = getRecord(name);
+    updateRecord(name, { hasRental: !current.hasRental });
   };
 
   // 支払い＆チェックイン一発完了
@@ -265,7 +281,7 @@ export default function ReceptionManagementModal({
     const nextRecords: Record<string, ParticipantCheckInRecord> = {};
     allMembers.forEach(name => {
       const current = getRecord(name);
-      const fee = calculateParticipantFee(name, current.customFee, current.partyJoined, config);
+      const fee = calculateParticipantFee(name, current.customFee, current.partyJoined, current.hasRental, config);
       nextRecords[name] = { ...current, calculatedFee: fee };
     });
     onRecordsChange(nextRecords);
@@ -285,7 +301,6 @@ export default function ReceptionManagementModal({
 
     allMembers.forEach(name => {
       const rec = getRecord(name);
-      const stats = memberStats.get(name);
       const fee = rec.calculatedFee;
 
       totalExpectedFee += fee;
@@ -300,12 +315,12 @@ export default function ReceptionManagementModal({
         totalParty++;
         partyTotalFee += pricingConfig.partyFee;
       }
-      if (stats?.hasRental) {
+      if (rec.hasRental) {
         totalRentalCount++;
         rentalTotalFee += pricingConfig.rentalDailyFee;
       }
 
-      const individualRental = stats?.hasRental ? pricingConfig.rentalDailyFee : 0;
+      const individualRental = rec.hasRental ? pricingConfig.rentalDailyFee : 0;
       const individualParty = rec.partyJoined ? pricingConfig.partyFee : 0;
       baseSessionTotalFee += (fee - individualRental - individualParty);
     });
@@ -426,18 +441,6 @@ export default function ReceptionManagementModal({
       setRestoreError('JSONの解析に失敗しました。正しいバックアップテキストを貼り付けてください。');
     }
   };
-
-  const handleDownloadVenueQr = () => {
-    const canvas = qrRef.current?.querySelector('canvas');
-    if (!canvas) return;
-    const url = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `reception_checkin_qr_${new Date().toISOString().slice(0, 10)}.png`;
-    link.click();
-  };
-
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   if (!isOpen) return null;
 
@@ -713,14 +716,23 @@ export default function ReceptionManagementModal({
 
                               {/* 機材レンタル加算 */}
                               <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                                {hasRental ? (
-                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30">
-                                    <Guitar className="w-3 h-3" />
-                                    レンタル有 (+¥{pricingConfig.rentalDailyFee})
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleRental(name)}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all border ${
+                                    rec.hasRental
+                                      ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 border-amber-500/40 shadow-sm'
+                                      : isDark ? 'text-slate-500 border-slate-800 hover:text-slate-300' : 'text-slate-400 border-slate-200 hover:text-slate-700'
+                                  }`}
+                                  title="クリックしてレンタル加算のあり/なしを切り替え"
+                                >
+                                  <Guitar className="w-3 h-3" />
+                                  <span>
+                                    {rec.hasRental 
+                                      ? `レンタル有 (+¥${pricingConfig.rentalDailyFee})${stats?.rentalItems && stats.rentalItems.length ? ` [${stats.rentalItems.join('/')}]` : ''}` 
+                                      : 'なし'}
                                   </span>
-                                ) : (
-                                  <span className="text-[10px] opacity-40">-</span>
-                                )}
+                                </button>
                               </td>
 
                               {/* 懇親会トグル */}
