@@ -128,17 +128,24 @@ export default function StepResult({
   };
 
 
-  const handlePublishShare = () => {
-    if (!result || result.schedule.length === 0) return;
-    const compressed = encodeScheduleToUrl(result.schedule, undefined, {
-      eventStartTime: result.eventStartTime,
-      openingEndTime: result.openingEndTime,
-      eventEndTime: result.eventEndTime,
-      isExtended: result.isExtended
-    });
-    const url = `${window.location.origin}/view#d=${compressed}`;
-    setShareUrl(url);
-    setIsShareModalOpen(true);
+  const handlePublishShare = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    try {
+      if (!result || result.schedule.length === 0) return;
+      const compressed = encodeScheduleToUrl(result.schedule, undefined, {
+        eventStartTime: result.eventStartTime,
+        openingEndTime: result.openingEndTime,
+        eventEndTime: result.eventEndTime,
+        isExtended: result.isExtended
+      });
+      const url = `${window.location.origin}/view#d=${compressed}`;
+      setShareUrl(url);
+      setIsShareModalOpen(true);
+    } catch (err) {
+      console.error('[handlePublishShare] ERROR:', err);
+      alert('URLの生成中にエラーが発生しました。コンソールを確認してください。\n' + String(err));
+    }
   };
 
   // TSVテキストの生成（Excel / Googleスプレッドシート貼付用）
@@ -390,6 +397,7 @@ export default function StepResult({
         </div>
         
         <button
+          type="button"
           onClick={onOptimize}
           disabled={isOptimizing}
           className="flex items-center gap-2 bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white px-7 py-3 rounded-2xl font-bold text-sm transition-all shadow-xl shadow-pink-500/25 hover:shadow-pink-500/40 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
