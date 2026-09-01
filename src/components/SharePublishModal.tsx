@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+"use client";
+
+import React, { useState, useRef } from 'react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
-import { shortenUrl } from '@/utils/shortener';
 import { 
   X, 
   Check, 
@@ -12,8 +13,7 @@ import {
   MessageSquare, 
   Smartphone,
   Share2,
-  CalendarCheck2,
-  Loader2
+  CalendarCheck2
 } from 'lucide-react';
 
 interface SharePublishModalProps {
@@ -29,43 +29,20 @@ export default function SharePublishModal({
   shareUrl,
   songCount
 }: SharePublishModalProps) {
-  const [shortUrl, setShortUrl] = useState<string>('');
-  const [isShortening, setIsShortening] = useState<boolean>(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedLineMessage, setCopiedLineMessage] = useState(false);
-  const [urlType, setUrlType] = useState<'short' | 'full'>('short');
   const qrRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (isOpen && shareUrl) {
-      setIsShortening(true);
-      shortenUrl(shareUrl)
-        .then(short => {
-          setShortUrl(short);
-        })
-        .catch(err => {
-          console.warn('URL shortening error', err);
-          setShortUrl(shareUrl);
-        })
-        .finally(() => {
-          setIsShortening(false);
-        });
-    }
-  }, [isOpen, shareUrl]);
-
   if (!isOpen) return null;
-
-  const activeUrl = urlType === 'short' ? (shortUrl || shareUrl) : shareUrl;
-  const qrTargetUrl = shortUrl || shareUrl;
 
   const lineMessage = `📋 【セッションタイムテーブルが確定しました！】
 全 ${songCount} 曲のタイムテーブルが完成しました。
 以下のリンクから自分の出演順や空き時間、機材情報をスマホで確認できます！👇
 
-${shortUrl || shareUrl}`;
+${shareUrl}`;
 
   const handleCopyUrl = () => {
-    navigator.clipboard.writeText(activeUrl).then(() => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
       setCopiedUrl(true);
       setTimeout(() => setCopiedUrl(false), 2000);
     });
@@ -119,49 +96,21 @@ ${shortUrl || shareUrl}`;
         <div className="p-6 overflow-y-auto space-y-6">
           {/* 1. 共有URLセクション */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Smartphone className="w-4 h-4 text-indigo-400" />
-                参加者閲覧用 URL
-              </label>
-              <div className="flex items-center gap-1 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setUrlType('short')}
-                  className={`px-2 py-0.5 rounded-lg font-semibold transition-all ${
-                    urlType === 'short' 
-                      ? 'bg-indigo-600 text-white shadow-sm' 
-                      : 'text-slate-400 hover:text-slate-200 bg-slate-800'
-                  }`}
-                >
-                  短縮URL (推奨)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUrlType('full')}
-                  className={`px-2 py-0.5 rounded-lg font-semibold transition-all ${
-                    urlType === 'full' 
-                      ? 'bg-indigo-600 text-white shadow-sm' 
-                      : 'text-slate-400 hover:text-slate-200 bg-slate-800'
-                  }`}
-                >
-                  フルURL
-                </button>
-              </div>
-            </div>
-
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-indigo-400" />
+              参加者閲覧用 URL (完全永続・サーバー不要)
+            </label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 readOnly
-                value={isShortening && urlType === 'short' ? '短縮URLを発行中...' : activeUrl}
+                value={shareUrl}
                 onFocus={(e) => e.target.select()}
                 className="flex-1 bg-slate-950 text-slate-200 font-mono text-xs px-3.5 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-indigo-500/50 shadow-inner"
               />
               <button
                 onClick={handleCopyUrl}
-                disabled={isShortening && urlType === 'short'}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all shrink-0 active:scale-95 disabled:opacity-50"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all shrink-0 active:scale-95"
               >
                 {copiedUrl ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
                 <span>{copiedUrl ? 'コピー完了！' : 'URLをコピー'}</span>
@@ -174,24 +123,19 @@ ${shortUrl || shareUrl}`;
             {/* QRコード表示 */}
             <div className="flex flex-col items-center justify-center p-3 bg-slate-900 rounded-xl border border-slate-800/80">
               <div ref={qrRef} className="p-3 bg-white rounded-xl shadow-inner mb-2 flex flex-col items-center justify-center min-w-[150px] min-h-[150px]">
-                {isShortening ? (
-                  <div className="flex flex-col items-center justify-center gap-2 text-slate-500 py-6">
-                    <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-                    <span className="text-[11px] font-semibold">QRコード生成中...</span>
-                  </div>
-                ) : qrTargetUrl ? (
+                {shareUrl ? (
                   <>
                     <QRCodeSVG 
-                      value={qrTargetUrl} 
+                      value={shareUrl} 
                       size={140}
-                      level="M"
+                      level="L"
                       marginSize={0}
                     />
                     <div className="hidden">
                       <QRCodeCanvas 
-                        value={qrTargetUrl} 
+                        value={shareUrl} 
                         size={400}
-                        level="M"
+                        level="L"
                         marginSize={2}
                       />
                     </div>
@@ -203,7 +147,7 @@ ${shortUrl || shareUrl}`;
                 )}
               </div>
 
-              {!isShortening && qrTargetUrl && (
+              {shareUrl && (
                 <button
                   onClick={handleDownloadQr}
                   className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 hover:bg-slate-800 px-3 py-1 rounded-lg transition-colors font-medium"
@@ -222,7 +166,7 @@ ${shortUrl || shareUrl}`;
                   会場や受付に貼ってスマホ読取
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  短縮URLによってドットが粗く大きく生成されるため、薄暗い会場や離れた場所からでもスマホカメラで一瞬で爆速スキャンできます。
+                  QR画像を印刷してスタジオやライブハウスの壁に貼れば、参加者がスマホカメラでかざすだけで即座にタイムテーブルを開けます。
                 </p>
               </div>
 

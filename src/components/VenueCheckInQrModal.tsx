@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
-import { shortenUrl } from '@/utils/shortener';
 import {
   X,
   QrCode,
@@ -11,8 +10,7 @@ import {
   Check,
   Printer,
   Sparkles,
-  ExternalLink,
-  Loader2
+  ExternalLink
 } from 'lucide-react';
 
 interface VenueCheckInQrModalProps {
@@ -29,37 +27,20 @@ export default function VenueCheckInQrModal({
   isDark = true
 }: VenueCheckInQrModalProps) {
   const [currentUrl, setCurrentUrl] = useState('');
-  const [qrTargetUrl, setQrTargetUrl] = useState('');
-  const [isShortening, setIsShortening] = useState(false);
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && isOpen) {
-      const fullUrl = window.location.href;
-      setCurrentUrl(fullUrl);
-      setIsShortening(true);
-
-      shortenUrl(fullUrl)
-        .then(short => {
-          setQrTargetUrl(short);
-        })
-        .catch(err => {
-          console.warn('URL shortener error', err);
-          setQrTargetUrl(fullUrl);
-        })
-        .finally(() => {
-          setIsShortening(false);
-        });
+      setCurrentUrl(window.location.href);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleCopyUrl = () => {
-    const urlToCopy = qrTargetUrl || currentUrl;
-    if (!urlToCopy) return;
-    navigator.clipboard.writeText(urlToCopy).then(() => {
+    if (!currentUrl) return;
+    navigator.clipboard.writeText(currentUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -123,27 +104,22 @@ export default function VenueCheckInQrModal({
 
           {/* QRコード表示ボックス */}
           <div className="flex flex-col items-center justify-center p-5 bg-white rounded-2xl shadow-inner border border-slate-200 max-w-[260px] mx-auto">
-            {isShortening ? (
-              <div className="w-[200px] h-[200px] flex flex-col items-center justify-center gap-2 text-slate-500">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-                <span className="text-xs font-semibold">短縮QRコードを生成中...</span>
-              </div>
-            ) : (qrTargetUrl || currentUrl) ? (
+            {currentUrl ? (
               <>
-                {/* 画面表示用 SVG QR (常に超高精細・スキャンしやすさ抜群) */}
+                {/* 画面表示用 SVG QR (常に超高精細) */}
                 <QRCodeSVG
-                  value={qrTargetUrl || currentUrl}
+                  value={currentUrl}
                   size={200}
-                  level="M"
+                  level="L"
                   marginSize={1}
                 />
 
                 {/* ダウンロード用 Canvas (非表示) */}
                 <div ref={canvasRef} className="hidden">
                   <QRCodeCanvas
-                    value={qrTargetUrl || currentUrl}
+                    value={currentUrl}
                     size={400}
-                    level="M"
+                    level="L"
                     marginSize={2}
                   />
                 </div>
@@ -158,25 +134,6 @@ export default function VenueCheckInQrModal({
               📱 スマホカメラでスキャンして入場
             </span>
           </div>
-
-          {/* 短縮URL表示 */}
-          {qrTargetUrl && qrTargetUrl.startsWith('http') && (
-            <div className={`p-2 rounded-xl border flex items-center justify-between gap-2 text-xs ${
-              isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
-            }`}>
-              <span className="font-mono text-[11px] truncate flex-1 text-left">
-                {qrTargetUrl}
-              </span>
-              <button
-                type="button"
-                onClick={handleCopyUrl}
-                className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 shrink-0 flex items-center gap-1"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? '済' : 'コピー'}</span>
-              </button>
-            </div>
-          )}
 
           {/* 受付手順案内 */}
           <div className={`p-3 rounded-xl border text-xs text-left space-y-1 ${
