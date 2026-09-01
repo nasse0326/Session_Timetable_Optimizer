@@ -426,9 +426,46 @@ function ParticipantViewContent() {
             label: '☕ 休憩・セット転換中',
             detail: `次曲まであと約 ${remaining} 分 (〜${tItem.endTime})`,
             activeTimelineId: tItem.id,
-            activeOriginalIndex: -1
+            activeOriginalIndex: -1,
+            transitionAfterIndex: tItem.afterOriginalIndex
           };
         }
+      }
+    }
+
+    // オープニング終了後〜1曲目開始前のスタンバイ転換
+    if (data.openingEndTime && data.schedule.length > 0) {
+      const opEnd = parseTimeToMinutes(data.openingEndTime);
+      const firstStart = parseTimeToMinutes(data.schedule[0].startTime);
+      if (nowMinutes >= opEnd && nowMinutes < firstStart) {
+        const remaining = firstStart - nowMinutes;
+        return {
+          status: 'transition' as const,
+          label: `⚡ 1曲目スタンバイ転換中 (〜${data.schedule[0].startTime})`,
+          detail: `1曲目「${data.schedule[0].song.title}」開始まであと約 ${remaining} 分`,
+          activeTimelineId: 'transition-opening',
+          activeOriginalIndex: -1,
+          transitionAfterIndex: -1
+        };
+      }
+    }
+
+    // 曲間の転換時間の判定（どの曲とどの曲の間か）
+    for (let i = 0; i < data.schedule.length - 1; i++) {
+      const currSong = data.schedule[i];
+      const nextSong = data.schedule[i + 1];
+      const currEnd = parseTimeToMinutes(currSong.endTime);
+      const nextStart = parseTimeToMinutes(nextSong.startTime);
+      if (nowMinutes >= currEnd && nowMinutes < nextStart) {
+        const remaining = nextStart - nowMinutes;
+        return {
+          status: 'transition' as const,
+          label: `⚡ 曲間転換中 (#${i + 1} 終了 ➜ #${i + 2}「${nextSong.song.title}」へ)`,
+          detail: `次曲開始まであと約 ${remaining} 分 (${nextSong.startTime} 開始予定)`,
+          activeTimelineId: `transition-${i}`,
+          activeOriginalIndex: i,
+          transitionAfterIndex: i
+        };
       }
     }
 
@@ -688,7 +725,7 @@ function ParticipantViewContent() {
                 </th>
               )}
               {visibleColumns.time && (
-                <th className={`px-3 py-3 min-w-[105px] ${
+                <th className={`px-2.5 py-3 w-20 min-w-[75px] ${
                   visibleColumns.number ? 'border-l border-slate-700/50' : ''
                 }`}>
                   時間 / 区分
@@ -701,45 +738,77 @@ function ParticipantViewContent() {
                 <th className="px-3 py-3 min-w-[200px]">担当メンバー</th>
               )}
               {visibleColumns.equipment && (
-                <th className="px-3 py-3 min-w-[110px]">機材 / 備考</th>
+                <th className="px-3 py-3 min-w-[120px]">機材 / 備考</th>
               )}
             </tr>
           </thead>
           <tbody className={`divide-y ${isDark ? 'divide-slate-800/60 bg-slate-950' : 'divide-slate-200 bg-white'}`}>
             {/* オープニング枠 */}
             {!selectedMember && data.eventStartTime && data.openingEndTime && data.eventStartTime !== data.openingEndTime && (
-              <tr 
-                id="timeline-opening"
-                className={`print-opening-row transition-all ${
-                  currentProgress?.activeTimelineId === 'opening' ? 'ring-2 ring-indigo-500 font-bold scale-[1.005]' : ''
-                } ${
-                  isDark ? 'bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300' : 'bg-indigo-50/80 border-b border-indigo-200 text-indigo-900'
-                }`}
-              >
-                {visibleColumns.number && (
-                  <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'}`}>
-                    -
-                  </td>
-                )}
-                {visibleColumns.time && (
-                  <td className="px-3 py-3 font-mono whitespace-nowrap font-medium text-[11px]">
-                    <div>{data.eventStartTime} - {data.openingEndTime}</div>
-                    <div className="mt-0.5 flex items-center gap-1">
-                      <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                        準備
-                      </span>
-                      {currentProgress?.activeTimelineId === 'opening' && (
-                        <span className="inline-flex items-center text-[9px] text-pink-400 font-bold animate-pulse">
-                          🔴 今ここ
+              <>
+                <tr 
+                  id="timeline-opening"
+                  className={`print-opening-row transition-all ${
+                    currentProgress?.activeTimelineId === 'opening' ? 'ring-2 ring-indigo-500 font-bold scale-[1.005]' : ''
+                  } ${
+                    isDark ? 'bg-indigo-950/30 border-b border-indigo-500/30 text-indigo-300' : 'bg-indigo-50/80 border-b border-indigo-200 text-indigo-900'
+                  }`}
+                >
+                  {visibleColumns.number && (
+                    <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'}`}>
+                      -
+                    </td>
+                  )}
+                  {visibleColumns.time && (
+                    <td className="px-2.5 py-3 font-mono whitespace-nowrap font-medium text-[11px]">
+                      <div className="leading-tight">
+                        <div className="font-bold">{data.eventStartTime}</div>
+                        <div className="text-[10px] opacity-75 whitespace-nowrap">- {data.openingEndTime}</div>
+                      </div>
+                      <div className="mt-1 flex items-center gap-1">
+                        <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                          準備
                         </span>
-                      )}
-                    </div>
+                        {currentProgress?.activeTimelineId === 'opening' && (
+                          <span className="inline-flex items-center text-[9px] text-pink-400 font-bold animate-pulse">
+                            🔴 今ここ
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                  <td colSpan={Math.max(1, visibleColumnCount - (visibleColumns.number ? 1 : 0) - (visibleColumns.time ? 1 : 0))} className="px-3 py-3 font-bold text-xs">
+                    🎪 集合・機材セッティング・オープニング（音出し・出欠確認）
                   </td>
+                </tr>
+
+                {/* オープニング直後のスタンバイ転換ライン */}
+                {currentProgress?.status === 'transition' && currentProgress.transitionAfterIndex === -1 && (
+                  <tr id="timeline-transition-opening" className="no-print animate-in fade-in duration-300">
+                    <td colSpan={visibleColumnCount} className="p-0 border-0">
+                      <div className={`py-1.5 px-3 flex items-center justify-between gap-2 border-y-2 border-pink-500 shadow-md ${
+                        isDark ? 'bg-gradient-to-r from-pink-950/70 via-pink-900/40 to-pink-950/70 text-pink-200' : 'bg-gradient-to-r from-pink-100 via-pink-50 to-pink-100 text-pink-900'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-500"></span>
+                          </span>
+                          <span className="font-mono text-[10px] font-bold bg-pink-600 text-white px-2 py-0.5 rounded-full shadow-sm">
+                            今ここ {nowFormatted}
+                          </span>
+                          <span className="text-xs font-bold">
+                            ⚡ 1曲目スタンバイ中（➜ #1「{data.schedule[0]?.song.title}」へ）
+                          </span>
+                        </div>
+                        <div className="font-mono text-[11px] font-bold text-pink-500 dark:text-pink-400 shrink-0">
+                          開始: {data.schedule[0]?.startTime}〜
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
                 )}
-                <td colSpan={Math.max(1, visibleColumnCount - (visibleColumns.number ? 1 : 0) - (visibleColumns.time ? 1 : 0))} className="px-3 py-3 font-bold text-xs">
-                  🎪 集合・機材セッティング・オープニング（音出し・出欠確認）
-                </td>
-              </tr>
+              </>
             )}
 
             {filteredTimeline.map((item) => {
@@ -762,8 +831,11 @@ function ParticipantViewContent() {
                       </td>
                     )}
                     {visibleColumns.time && (
-                      <td className="px-3 py-2.5 font-mono whitespace-nowrap font-bold text-xs text-emerald-700 dark:text-emerald-300">
-                        <div>{item.startTime} - {item.endTime}</div>
+                      <td className="px-2.5 py-2.5 font-mono whitespace-nowrap font-bold text-xs text-emerald-700 dark:text-emerald-300">
+                        <div className="leading-tight">
+                          <div>{item.startTime}</div>
+                          <div className="text-[10px] opacity-75 whitespace-nowrap">- {item.endTime}</div>
+                        </div>
                         {isItemActive && (
                           <div className="mt-0.5 text-[9px] text-pink-400 font-bold animate-pulse">
                             🔴 休憩中
@@ -788,106 +860,142 @@ function ParticipantViewContent() {
               const category = s.category || '通常';
 
               return (
-                <tr 
-                  key={item.id} 
-                  id={`timeline-${item.id}`}
-                  className={`transition-colors group ${
-                    isItemActive
-                      ? isDark ? 'bg-indigo-950/80 font-semibold ring-2 ring-pink-500/80' : 'bg-pink-50 font-semibold ring-2 ring-pink-500'
-                      : isUserSong 
-                      ? isDark ? 'bg-indigo-950/40 font-medium' : 'bg-indigo-50/90 font-medium'
-                      : isDark ? 'hover:bg-slate-900/60' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  {/* 曲番号 (#) */}
-                  {visibleColumns.number && (
-                    <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'} ${
+                <React.Fragment key={item.id}>
+                  <tr 
+                    id={`timeline-${item.id}`}
+                    className={`transition-colors group ${
                       isItemActive
-                        ? 'bg-pink-600 text-white'
+                        ? isDark ? 'bg-indigo-950/80 font-semibold ring-2 ring-pink-500/80' : 'bg-pink-50 font-semibold ring-2 ring-pink-500'
                         : isUserSong 
-                        ? isDark ? 'bg-indigo-950/80 text-indigo-200' : 'bg-indigo-100 text-indigo-900'
-                        : isDark ? 'bg-slate-950 text-slate-400 group-hover:bg-slate-900' : 'bg-white text-slate-500 group-hover:bg-slate-50'
-                    }`}>
-                      {item.originalIndex + 1}
-                    </td>
-                  )}
+                        ? isDark ? 'bg-indigo-950/40 font-medium' : 'bg-indigo-50/90 font-medium'
+                        : isDark ? 'hover:bg-slate-900/60' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    {/* 曲番号 (#) */}
+                    {visibleColumns.number && (
+                      <td className={`px-2.5 py-3 text-center font-mono font-bold ${!isPrintTableOnly && 'sticky left-0 z-10'} ${
+                        isItemActive
+                          ? 'bg-pink-600 text-white'
+                          : isUserSong 
+                          ? isDark ? 'bg-indigo-950/80 text-indigo-200' : 'bg-indigo-100 text-indigo-900'
+                          : isDark ? 'bg-slate-950 text-slate-400 group-hover:bg-slate-900' : 'bg-white text-slate-500 group-hover:bg-slate-50'
+                      }`}>
+                        {item.originalIndex + 1}
+                      </td>
+                    )}
 
-                  {/* 時間・カテゴリ（統合） */}
-                  {visibleColumns.time && (
-                    <td className={`px-3 py-3 font-mono whitespace-nowrap font-medium ${
-                      isItemActive
-                        ? isDark ? 'text-pink-300 font-bold' : 'text-pink-700 font-bold'
-                        : isUserSong 
-                        ? isDark ? 'text-white' : 'text-indigo-950 font-bold'
-                        : isDark ? 'text-slate-200' : 'text-slate-800'
-                    }`}>
-                      <div>{item.item.startTime} - {item.item.endTime}</div>
-                      <div className="mt-1 flex items-center gap-1">
-                        <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
-                          {category}
-                        </span>
-                        {isItemActive && (
-                          <span className="inline-flex items-center text-[9px] bg-pink-500/20 text-pink-400 border border-pink-500/40 px-1 py-0.2 rounded font-bold animate-pulse">
-                            🔴 演奏中
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  )}
-
-                  {/* 曲名 / バンド */}
-                  {visibleColumns.title && (
-                    <td className="px-3 py-3 break-words">
-                      <div className={`font-bold text-xs flex items-start gap-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                        <Music className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
-                        <span>{s.title}</span>
-                      </div>
-                      {(s.bandName || s.artist) && (
-                        <div className={`text-[11px] mt-0.5 break-words ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {s.bandName && <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{s.bandName} </span>}
-                          {s.artist && <span>({s.artist})</span>}
+                    {/* 時間・区分（統合・改行で省スペース化） */}
+                    {visibleColumns.time && (
+                      <td className={`px-2.5 py-3 font-mono whitespace-nowrap font-medium ${
+                        isItemActive
+                          ? isDark ? 'text-pink-300 font-bold' : 'text-pink-700 font-bold'
+                          : isUserSong 
+                          ? isDark ? 'text-white' : 'text-indigo-950 font-bold'
+                          : isDark ? 'text-slate-200' : 'text-slate-800'
+                      }`}>
+                        <div className="leading-tight">
+                          <div className="font-bold text-xs">{item.item.startTime}</div>
+                          <div className="text-[10px] opacity-75 whitespace-nowrap">- {item.item.endTime}</div>
                         </div>
-                      )}
-                    </td>
-                  )}
-
-                  {/* 担当メンバー */}
-                  {visibleColumns.members && (
-                    <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {s.members.map((m, mIdx) => (
-                          <span
-                            key={mIdx}
-                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] ${getPartBadgeStyle(m.part)} ${
-                              selectedMember === m.name ? 'ring-2 ring-pink-500 font-bold scale-105' : ''
-                            }`}
-                          >
-                            <span className="font-mono text-[9px] opacity-75">{m.part}</span>
-                            <span>{m.name}</span>
+                        <div className="mt-1 flex items-center gap-1">
+                          <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
+                            {category}
                           </span>
-                        ))}
-                      </div>
-                    </td>
-                  )}
-
-                  {/* 機材・備考 */}
-                  {visibleColumns.equipment && (
-                    <td className={`px-3 py-3 text-[11px] break-words ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                      <div className="space-y-0.5">
-                        {s.bring && <div>持込: {s.bring}</div>}
-                        {s.rental && <div>レンタル: {s.rental}</div>}
-                        {!s.bring && !s.rental && !s.requiresLongSetup && <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>-</span>}
-                        {s.requiresLongSetup && !s.bring && !s.rental && (
-                          <div>
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-[9px] font-bold">
-                              ⚡ 転換長
+                          {isItemActive && (
+                            <span className="inline-flex items-center text-[9px] bg-pink-500/20 text-pink-400 border border-pink-500/40 px-1 py-0.2 rounded font-bold animate-pulse">
+                              🔴 演奏中
                             </span>
+                          )}
+                        </div>
+                      </td>
+                    )}
+
+                    {/* 曲名 / バンド */}
+                    {visibleColumns.title && (
+                      <td className="px-3 py-3 break-words">
+                        <div className={`font-bold text-xs flex items-start gap-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                          <Music className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                          <span>{s.title}</span>
+                        </div>
+                        {(s.bandName || s.artist) && (
+                          <div className={`text-[11px] mt-0.5 break-words ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {s.bandName && <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{s.bandName} </span>}
+                            {s.artist && <span>({s.artist})</span>}
                           </div>
                         )}
-                      </div>
-                    </td>
+                      </td>
+                    )}
+
+                    {/* 担当メンバー */}
+                    {visibleColumns.members && (
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {s.members.map((m, mIdx) => (
+                            <span
+                              key={mIdx}
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] ${getPartBadgeStyle(m.part)} ${
+                                selectedMember === m.name ? 'ring-2 ring-pink-500 font-bold scale-105' : ''
+                              }`}
+                            >
+                              <span className="font-mono text-[9px] opacity-75">{m.part}</span>
+                              <span>{m.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    )}
+
+                    {/* 機材・備考・制約メモ */}
+                    {visibleColumns.equipment && (
+                      <td className={`px-3 py-3 text-[11px] break-words ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <div className="space-y-1">
+                          {s.bring && <div>持込: {s.bring}</div>}
+                          {s.rental && <div>レンタル: {s.rental}</div>}
+                          {s.rawNotes && (
+                            <div className="text-amber-600 dark:text-amber-300 font-semibold text-[10px]">
+                              📝 {s.rawNotes}
+                            </div>
+                          )}
+                          {!s.bring && !s.rental && !s.rawNotes && !s.requiresLongSetup && <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>-</span>}
+                          {s.requiresLongSetup && !s.bring && !s.rental && (
+                            <div>
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-[9px] font-bold">
+                                ⚡ 転換長
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+
+                  {/* ⚡ 曲間の「今ここ」転換インジケーターライン */}
+                  {currentProgress?.status === 'transition' && currentProgress.transitionAfterIndex === item.originalIndex && (
+                    <tr id={`timeline-transition-${item.originalIndex}`} className="no-print animate-in fade-in duration-300">
+                      <td colSpan={visibleColumnCount} className="p-0 border-0">
+                        <div className={`py-1.5 px-3 flex items-center justify-between gap-2 border-y-2 border-pink-500 shadow-md ${
+                          isDark ? 'bg-gradient-to-r from-pink-950/70 via-pink-900/40 to-pink-950/70 text-pink-200' : 'bg-gradient-to-r from-pink-100 via-pink-50 to-pink-100 text-pink-900'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-500"></span>
+                            </span>
+                            <span className="font-mono text-[10px] font-bold bg-pink-600 text-white px-2 py-0.5 rounded-full shadow-sm">
+                              今ここ {nowFormatted}
+                            </span>
+                            <span className="text-xs font-bold">
+                              ⚡ 曲間転換中（#{item.originalIndex + 1} 終了 ➜ 次曲 #{item.originalIndex + 2}「{data.schedule[item.originalIndex + 1]?.song.title}」へ）
+                            </span>
+                          </div>
+                          <div className="font-mono text-[11px] font-bold text-pink-500 dark:text-pink-400 shrink-0">
+                            次曲開始: {data.schedule[item.originalIndex + 1]?.startTime}〜
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </tr>
+                </React.Fragment>
               );
             })}
 
@@ -1249,7 +1357,7 @@ function ParticipantViewContent() {
               </div>
 
               {/* STEP 2: QRチェックイン */}
-              <div className={`p-3.5 rounded-xl border flex flex-col justify-between gap-2 ${
+              <div className={`p-3.5 rounded-xl border flex flex-col justify-between gap-2.5 ${
                 selectedMemberSummary.record?.checkedIn
                   ? isDark ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-emerald-50 border-emerald-300'
                   : isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
@@ -1268,44 +1376,28 @@ function ParticipantViewContent() {
 
                   <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                     {selectedMemberSummary.record?.checkedIn
-                      ? `✓ 入場チェックインが完了しました (${selectedMemberSummary.record.checkInTime})`
-                      : selectedMemberSummary.record?.paid
-                      ? 'お支払いを確認しました！下のボタンを押して入場完了にしてください。'
-                      : 'お支払い後、受付のQRコード読み取りまたは下のボタンでチェックインします。'}
+                      ? `✓ 入場チェックインが完了しました (${selectedMemberSummary.record.checkInTime || '済'})`
+                      : '受付デスクでお支払い後、受付の入場用QRコードを読み取るか提示してチェックインを完了してください。'}
                   </p>
                 </div>
 
-                {!selectedMemberSummary.record?.checkedIn && (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleSelfCheckIn(selectedMember)}
-                      className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 ${
-                        selectedMemberSummary.record?.paid
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white animate-pulse'
-                          : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                      }`}
-                    >
+                <div className="pt-1">
+                  {selectedMemberSummary.record?.checkedIn ? (
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 text-xs font-bold justify-center">
                       <Check className="w-4 h-4 stroke-[3]" />
-                      <span>
-                        {selectedMemberSummary.record?.paid 
-                          ? '支払い確認済・入場完了にする' 
-                          : '支払いを済ませて入場完了にする'}
-                      </span>
-                    </button>
-
+                      <span>入場受付完了 ｜ 本日は楽しんでいってください！</span>
+                    </div>
+                  ) : (
                     <button
                       type="button"
                       onClick={() => setIsVenueQrModalOpen(true)}
-                      className={`p-2 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all ${
-                        isDark ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700' : 'bg-white hover:bg-slate-100 text-indigo-600 border-slate-300'
-                      }`}
-                      title="会場受付用QRコードを表示"
+                      className="w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition-all active:scale-95"
                     >
                       <QrCode className="w-4 h-4" />
+                      <span>受付用QRコードを表示・確認する</span>
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1503,6 +1595,27 @@ function ParticipantViewContent() {
               </div>
             )}
 
+            {/* オープニング直後のスタンバイ転換 (カード表示) */}
+            {currentProgress?.status === 'transition' && currentProgress.transitionAfterIndex === -1 && (
+              <div id="timeline-transition-opening" className="no-print my-2 p-2.5 rounded-2xl border-2 border-pink-500 bg-pink-500/15 backdrop-blur-sm text-pink-600 dark:text-pink-300 font-bold text-xs flex items-center justify-between shadow-lg shadow-pink-500/20 animate-pulse">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-500"></span>
+                  </span>
+                  <span className="font-mono text-[10px] bg-pink-600 text-white px-2 py-0.5 rounded-full shrink-0">
+                    今ここ {nowFormatted}
+                  </span>
+                  <span className="text-xs truncate">
+                    ⚡ 1曲目スタンバイ中（➜ #1「{data.schedule[0]?.song.title}」へ）
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono shrink-0 font-bold">
+                  開始: {data.schedule[0]?.startTime}〜
+                </span>
+              </div>
+            )}
+
             {filteredTimeline.map((item) => {
               const isItemActive = currentProgress?.activeTimelineId === item.id;
 
@@ -1557,113 +1670,142 @@ function ParticipantViewContent() {
               const category = s.category || '通常';
 
               return (
-                <div 
-                  key={item.id}
-                  id={`timeline-${item.id}`}
-                  className={`rounded-2xl p-4 transition-all border shadow-sm ${
-                    isItemActive
-                      ? isDark
-                        ? 'bg-gradient-to-r from-indigo-950/80 to-purple-950/80 border-pink-500/80 ring-2 ring-pink-500 shadow-xl shadow-pink-500/10 scale-[1.01]'
-                        : 'bg-pink-50/90 border-pink-400 ring-2 ring-pink-500 shadow-lg scale-[1.01]'
-                      : isUserSong
-                      ? isDark
-                        ? 'bg-indigo-950/40 border-indigo-500/60 shadow-lg shadow-indigo-500/10 scale-[1.01]'
-                        : 'bg-indigo-50/90 border-indigo-400 shadow-md ring-1 ring-indigo-400/40 scale-[1.01]'
-                      : isDark
-                      ? 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {/* カード上段: 番号・時間・カテゴリ */}
-                  <div className={`flex items-center justify-between gap-2 mb-2 pb-2 border-b ${
-                    isDark ? 'border-slate-800/60' : 'border-slate-100'
-                  }`}>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center ${
-                        isItemActive
-                          ? 'bg-pink-600 text-white shadow-md'
-                          : isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {item.originalIndex + 1}
-                      </span>
-                      <span className={`text-xs font-mono font-bold ${
-                        isItemActive 
-                          ? isDark ? 'text-pink-300' : 'text-pink-700'
-                          : isDark ? 'text-slate-100' : 'text-slate-900'
-                      }`}>
-                        {item.item.startTime} - {item.item.endTime}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {isItemActive && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/20 text-pink-400 border border-pink-500/40 animate-pulse">
-                          🔴 現在演奏中
+                <React.Fragment key={item.id}>
+                  <div 
+                    id={`timeline-${item.id}`}
+                    className={`rounded-2xl p-4 transition-all border shadow-sm ${
+                      isItemActive
+                        ? isDark
+                          ? 'bg-gradient-to-r from-indigo-950/80 to-purple-950/80 border-pink-500/80 ring-2 ring-pink-500 shadow-xl shadow-pink-500/10 scale-[1.01]'
+                          : 'bg-pink-50/90 border-pink-400 ring-2 ring-pink-500 shadow-lg scale-[1.01]'
+                        : isUserSong
+                        ? isDark
+                          ? 'bg-indigo-950/40 border-indigo-500/60 shadow-lg shadow-indigo-500/10 scale-[1.01]'
+                          : 'bg-indigo-50/90 border-indigo-400 shadow-md ring-1 ring-indigo-400/40 scale-[1.01]'
+                        : isDark
+                        ? 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                        : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {/* カード上段: 番号・時間・カテゴリ */}
+                    <div className={`flex items-center justify-between gap-2 mb-2 pb-2 border-b ${
+                      isDark ? 'border-slate-800/60' : 'border-slate-100'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-6 h-6 rounded-lg font-mono text-xs font-bold flex items-center justify-center ${
+                          isItemActive
+                            ? 'bg-pink-600 text-white shadow-md'
+                            : isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {item.originalIndex + 1}
                         </span>
-                      )}
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
-                        {category}
-                      </span>
-                    </div>
-                  </div>
+                        <span className={`text-xs font-mono font-bold ${
+                          isItemActive 
+                            ? isDark ? 'text-pink-300' : 'text-pink-700'
+                            : isDark ? 'text-slate-100' : 'text-slate-900'
+                        }`}>
+                          {item.item.startTime} - {item.item.endTime}
+                        </span>
+                      </div>
 
-                  {/* カード中段: 曲名・バンド名・原曲アーティスト */}
-                  <div className="mb-3">
-                    <h3 className={`text-sm sm:text-base font-bold flex items-center gap-1.5 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                      <Music className="w-4 h-4 text-indigo-500 shrink-0" />
-                      <span>{s.title}</span>
-                    </h3>
-                    {(s.bandName || s.artist) && (
-                      <div className={`text-[11px] mt-1 flex flex-wrap gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {s.bandName && <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{s.bandName} </span>}
-                        {s.artist && <span>({s.artist})</span>}
+                      <div className="flex items-center gap-1.5">
+                        {isItemActive && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/20 text-pink-400 border border-pink-500/40 animate-pulse">
+                            🔴 現在演奏中
+                          </span>
+                        )}
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getCategoryBadgeStyle(category)}`}>
+                          {category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* カード中段: 曲名・バンド名・原曲アーティスト */}
+                    <div className="mb-3">
+                      <h3 className={`text-sm sm:text-base font-bold flex items-center gap-1.5 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                        <Music className="w-4 h-4 text-indigo-500 shrink-0" />
+                        <span>{s.title}</span>
+                      </h3>
+                      {(s.bandName || s.artist) && (
+                        <div className={`text-[11px] mt-1 flex flex-wrap gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {s.bandName && <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{s.bandName} </span>}
+                          {s.artist && <span>({s.artist})</span>}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 機材・備考・制約メモ */}
+                    {(s.bring || s.rental || s.rawNotes || (s.requiresLongSetup && !s.bring && !s.rental)) && (
+                      <div className="mb-2.5 flex flex-wrap gap-2 text-[11px]">
+                        {s.requiresLongSetup && !s.bring && !s.rental && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 font-bold text-[10px]">
+                            ⚡ 転換長
+                          </span>
+                        )}
+                        {s.bring && (
+                          <span className={`px-2 py-0.5 rounded border ${
+                            isDark ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-slate-700 bg-slate-50 border-slate-200'
+                          }`}>
+                            持込: {s.bring}
+                          </span>
+                        )}
+                        {s.rental && (
+                          <span className={`px-2 py-0.5 rounded border ${
+                            isDark ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-slate-700 bg-slate-50 border-slate-200'
+                          }`}>
+                            レンタル: {s.rental}
+                          </span>
+                        )}
+                        {s.rawNotes && (
+                          <span className={`px-2 py-0.5 rounded border font-semibold ${
+                            isDark ? 'text-amber-300 bg-amber-950/40 border-amber-500/40' : 'text-amber-800 bg-amber-50 border-amber-300'
+                          }`}>
+                            📝 {s.rawNotes}
+                          </span>
+                        )}
                       </div>
                     )}
+
+                    {/* メンバー一覧 */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {s.members.map((m, mIdx) => {
+                        const isHighlighted = selectedMember === m.name;
+                        return (
+                          <span
+                            key={mIdx}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs transition-all ${getPartBadgeStyle(m.part)} ${
+                              isHighlighted ? 'ring-2 ring-pink-500 font-bold scale-105' : ''
+                            }`}
+                          >
+                            <span className="font-mono text-[10px] opacity-75">{m.part}</span>
+                            <span>{m.name}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  {/* 機材情報 */}
-                  {(s.bring || s.rental || (s.requiresLongSetup && !s.bring && !s.rental)) && (
-                    <div className="mb-2.5 flex flex-wrap gap-2 text-[11px]">
-                      {s.requiresLongSetup && !s.bring && !s.rental && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 font-bold text-[10px]">
-                          ⚡ 転換長
+                  {/* ⚡ 曲間の「今ここ」転換インジケーターライン (カード表示) */}
+                  {currentProgress?.status === 'transition' && currentProgress.transitionAfterIndex === item.originalIndex && (
+                    <div id={`timeline-transition-${item.originalIndex}`} className="no-print my-2 p-2.5 rounded-2xl border-2 border-pink-500 bg-pink-500/15 backdrop-blur-sm text-pink-600 dark:text-pink-300 font-bold text-xs flex items-center justify-between shadow-lg shadow-pink-500/20 animate-pulse">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="relative flex h-2.5 w-2.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-500"></span>
                         </span>
-                      )}
-                      {s.bring && (
-                        <span className={`px-2 py-0.5 rounded border ${
-                          isDark ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-slate-700 bg-slate-50 border-slate-200'
-                        }`}>
-                          持込: {s.bring}
+                        <span className="font-mono text-[10px] bg-pink-600 text-white px-2 py-0.5 rounded-full shrink-0">
+                          今ここ {nowFormatted}
                         </span>
-                      )}
-                      {s.rental && (
-                        <span className={`px-2 py-0.5 rounded border ${
-                          isDark ? 'text-slate-300 bg-slate-950 border-slate-800' : 'text-slate-700 bg-slate-50 border-slate-200'
-                        }`}>
-                          レンタル: {s.rental}
+                        <span className="text-xs truncate">
+                          ⚡ 曲間転換中（#{item.originalIndex + 1} 終了 ➜ 次曲 #{item.originalIndex + 2}「{data.schedule[item.originalIndex + 1]?.song.title}」へ）
                         </span>
-                      )}
+                      </div>
+                      <span className="text-[11px] font-mono shrink-0 font-bold">
+                        次: {data.schedule[item.originalIndex + 1]?.startTime}〜
+                      </span>
                     </div>
                   )}
-
-                  {/* メンバー一覧 */}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {s.members.map((m, mIdx) => {
-                      const isHighlighted = selectedMember === m.name;
-                      return (
-                        <span
-                          key={mIdx}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs transition-all ${getPartBadgeStyle(m.part)} ${
-                            isHighlighted ? 'ring-2 ring-pink-500 font-bold scale-105' : ''
-                          }`}
-                        >
-                          <span className="font-mono text-[10px] opacity-75">{m.part}</span>
-                          <span>{m.name}</span>
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
+                </React.Fragment>
               );
             })}
 
