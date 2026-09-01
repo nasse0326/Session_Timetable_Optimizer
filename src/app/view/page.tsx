@@ -127,15 +127,28 @@ function ParticipantViewContent() {
   const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
 
-  // 定期タイマーで現在時刻を更新 (5秒ごと)
+  // 定期タイマーで現在時刻を更新 (20秒ごと & 画面復帰時)
   useEffect(() => {
-    const interval = setInterval(() => {
+    const updateTime = () => {
       const d = new Date();
       const mins = d.getHours() * 60 + d.getMinutes();
       setNowMinutes(mins);
       setNowFormatted(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`);
-    }, 5000);
-    return () => clearInterval(interval);
+    };
+
+    const interval = setInterval(updateTime, 20000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        updateTime();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // テーマ初期読み込み
