@@ -7,7 +7,6 @@ import {
   ParticipantCheckInRecord 
 } from '@/types';
 import { SharedScheduleData } from '@/utils/share';
-import VenueCheckInQrModal from '@/components/VenueCheckInQrModal';
 import { aggregateMemberRentalInfo } from '@/utils/rental';
 import {
   X,
@@ -91,7 +90,6 @@ export default function ReceptionManagementModal({
   const [restoreSuccess, setRestoreSuccess] = useState(false);
 
   // 会場QRコード表示モーダル状態
-  const [isVenueQrOpen, setIsVenueQrOpen] = useState(false);
 
   // 📊 スプレッドシート連携ステート
   const activeWebhookUrl = spreadsheetWebhookUrl || scheduleData.spreadsheetWebhookUrl || '';
@@ -734,16 +732,6 @@ export default function ReceptionManagementModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 受付QRコード表示ボタン */}
-            <button
-              type="button"
-              onClick={() => setIsVenueQrOpen(true)}
-              className="flex items-center gap-1 text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/40 px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95"
-              title="受付デスクに置く入場チェックイン用QRコードを表示"
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">受付用QR表示</span>
-            </button>
 
             <button
               type="button"
@@ -896,14 +884,6 @@ export default function ReceptionManagementModal({
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsVenueQrOpen(true)}
-                  className="shrink-0 text-xs font-bold underline hover:opacity-80 flex items-center gap-1"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  受付用QRを表示
-                </button>
               </div>
 
               {/* 検索・絞り込みフィルターバー */}
@@ -1618,13 +1598,6 @@ export default function ReceptionManagementModal({
         </div>
       </div>
 
-      {/* 🖨️ 会場受付デスク用 QRコード拡大表示モーダル */}
-      <VenueCheckInQrModal
-        isOpen={isVenueQrOpen}
-        onClose={() => setIsVenueQrOpen(false)}
-        eventTitle={scheduleData.title}
-        isDark={isDark}
-      />
     </div>
   );
 }

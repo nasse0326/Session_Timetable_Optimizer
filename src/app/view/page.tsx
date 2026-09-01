@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { decodeScheduleFromUrl, SharedScheduleData } from '@/utils/share';
 import AdInlineBanner from '@/components/AdInlineBanner';
 import ReceptionManagementModal from '@/components/ReceptionManagementModal';
-import VenueCheckInQrModal from '@/components/VenueCheckInQrModal';
 import ParticipantQrModal from '@/components/ParticipantQrModal';
 import { aggregateMemberRentalInfo } from '@/utils/rental';
 import { updateParticipantOnSheet } from '@/utils/spreadsheetSync';
@@ -114,7 +113,6 @@ function ParticipantViewContent() {
   // 受付・集金管理モーダル状態 & データ永続化
   const [isReceptionModalOpen, setIsReceptionModalOpen] = useState(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-  const [isVenueQrModalOpen, setIsVenueQrModalOpen] = useState(false);
   const [isParticipantQrModalOpen, setIsParticipantQrModalOpen] = useState(false);
   const [pricingConfig, setPricingConfig] = useState<PaymentConfig>(DEFAULT_PRICING_CONFIG);
   const [records, setRecords] = useState<Record<string, ParticipantCheckInRecord>>({});
@@ -1091,17 +1089,6 @@ function ParticipantViewContent() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* 会場受付用QRコードボタン */}
-          <button
-            type="button"
-            onClick={() => setIsVenueQrModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/40 transition-all shadow-sm active:scale-95"
-            title="受付デスクに掲示・参加者がスキャンするQRコードを表示"
-          >
-            <QrCode className="w-3.5 h-3.5" />
-            <span>受付QR表示</span>
-          </button>
-
           {/* 受付・集金管理ボタン */}
           <button
             type="button"
@@ -1894,14 +1881,6 @@ function ParticipantViewContent() {
         adminPassword={data.adminPassword}
         isAuthenticated={isAdminAuthenticated}
         onAuthenticate={() => setIsAdminAuthenticated(true)}
-      />
-
-      {/* 会場受付用QRコードモーダル */}
-      <VenueCheckInQrModal
-        isOpen={isVenueQrModalOpen}
-        onClose={() => setIsVenueQrModalOpen(false)}
-        eventTitle={data?.title}
-        isDark={isDark}
       />
 
       {/* 参加者個人の入場用QRコードモーダル */}
