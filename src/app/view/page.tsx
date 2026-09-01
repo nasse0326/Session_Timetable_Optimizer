@@ -6,6 +6,7 @@ import AdInlineBanner from '@/components/AdInlineBanner';
 import ReceptionManagementModal from '@/components/ReceptionManagementModal';
 import VenueCheckInQrModal from '@/components/VenueCheckInQrModal';
 import { aggregateMemberRentalInfo } from '@/utils/rental';
+import { updateParticipantOnSheet } from '@/utils/spreadsheetSync';
 import { 
   PricingTier, 
   PaymentConfig, 
@@ -181,8 +182,21 @@ function ParticipantViewContent() {
           console.error('Failed to parse records from localStorage', e);
         }
       }
+      const savedWebhook = localStorage.getItem(`${eventStorageKey}_webhookUrl`);
+      if (savedWebhook) {
+        setSpreadsheetWebhookUrl(savedWebhook);
+      }
     }
   }, [eventStorageKey]);
+
+  const [spreadsheetWebhookUrl, setSpreadsheetWebhookUrl] = useState<string>('');
+
+  const handleSpreadsheetWebhookUrlChange = (url: string) => {
+    setSpreadsheetWebhookUrl(url);
+    if (typeof window !== 'undefined' && eventStorageKey) {
+      localStorage.setItem(`${eventStorageKey}_webhookUrl`, url);
+    }
+  };
 
   const handlePricingConfigChange = (newConfig: PaymentConfig) => {
     setPricingConfig(newConfig);
@@ -291,6 +305,9 @@ function ParticipantViewContent() {
         }
 
         setData(decoded);
+        if (decoded.spreadsheetWebhookUrl) {
+          setSpreadsheetWebhookUrl(decoded.spreadsheetWebhookUrl);
+        }
         setLoading(false);
       } catch (err) {
         console.error('Error parsing view data', err);
@@ -586,9 +603,9 @@ function ParticipantViewContent() {
       checkedIn: false,
       paid: false,
       partyJoined: false,
-      hasRental: false,
+      hasRental: selectedMemberSummary?.hasRental || false,
       songCount: selectedMemberSummary?.totalSongs || 1,
-      calculatedFee: 2000
+      calculatedFee: selectedMemberSummary?.calculatedFee || 2000
     };
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
@@ -598,6 +615,15 @@ function ParticipantViewContent() {
       checkInTime: timeStr
     };
     handleRecordsChange({ ...records, [memberName]: updated });
+
+    if (spreadsheetWebhookUrl) {
+      updateParticipantOnSheet(
+        spreadsheetWebhookUrl,
+        updated,
+        selectedMemberSummary?.songs.map(s => s.part),
+        selectedMemberSummary?.rentalItems.join('/')
+      ).catch(e => console.warn('Self checkin sheet update failed', e));
+    }
   };
 
   const handlePrint = () => {
@@ -1705,6 +1731,8 @@ function ParticipantViewContent() {
         onRecordsChange={handleRecordsChange}
         pricingConfig={pricingConfig}
         onPricingConfigChange={handlePricingConfigChange}
+        spreadsheetWebhookUrl={spreadsheetWebhookUrl}
+        onSpreadsheetWebhookUrlChange={handleSpreadsheetWebhookUrlChange}
       />
 
       {/* 会場受付用QRコードモーダル */}

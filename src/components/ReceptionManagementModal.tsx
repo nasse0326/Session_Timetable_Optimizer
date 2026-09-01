@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   PricingTier, 
   PaymentConfig, 
@@ -32,8 +32,20 @@ import {
   FileSpreadsheet,
   QrCode,
   Printer,
-  BadgeCheck
+  BadgeCheck,
+  RefreshCw,
+  ExternalLink,
+  CheckCircle,
+  HelpCircle,
+  Database,
+  Radio
 } from 'lucide-react';
+import { GAS_SCRIPT_CODE } from '@/utils/gasTemplate';
+import { 
+  fetchSheetData, 
+  initSpreadsheet, 
+  updateParticipantOnSheet 
+} from '@/utils/spreadsheetSync';
 
 interface ReceptionManagementModalProps {
   isOpen: boolean;
@@ -45,6 +57,8 @@ interface ReceptionManagementModalProps {
   onRecordsChange: (records: Record<string, ParticipantCheckInRecord>) => void;
   pricingConfig: PaymentConfig;
   onPricingConfigChange: (config: PaymentConfig) => void;
+  spreadsheetWebhookUrl?: string;
+  onSpreadsheetWebhookUrlChange?: (url: string) => void;
 }
 
 export default function ReceptionManagementModal({
@@ -56,9 +70,11 @@ export default function ReceptionManagementModal({
   records,
   onRecordsChange,
   pricingConfig,
-  onPricingConfigChange
+  onPricingConfigChange,
+  spreadsheetWebhookUrl,
+  onSpreadsheetWebhookUrlChange
 }: ReceptionManagementModalProps) {
-  const [activeTab, setActiveTab] = useState<'list' | 'settings' | 'summary'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'settings' | 'summary' | 'sheets'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'unCheckedIn' | 'checkedIn' | 'unpaid' | 'paid' | 'party'>('all');
   const [copiedBackup, setCopiedBackup] = useState(false);
@@ -69,6 +85,17 @@ export default function ReceptionManagementModal({
 
   // 会場QRコード表示モーダル状態
   const [isVenueQrOpen, setIsVenueQrOpen] = useState(false);
+
+  // 📊 スプレッドシート連携ステート
+  const activeWebhookUrl = spreadsheetWebhookUrl || scheduleData.spreadsheetWebhookUrl || '';
+  const [webhookInput, setWebhookInput] = useState(activeWebhookUrl);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isInitializingSheet, setIsInitializingSheet] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'connected' | 'error'>(activeWebhookUrl ? 'connected' : 'idle');
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [copiedGasCode, setCopiedGasCode] = useState(false);
+  const [showGasCodePreview, setShowGasCodePreview] = useState(false);
 
   // 元の曲リストから個人へのレンタル自動紐づけマップを構築
   const autoRentalMap = useMemo(() => {
@@ -154,6 +181,25 @@ export default function ReceptionManagementModal({
     };
   };
 
+  // スプレッドシートへの非同期バックグラウンド送信
+  const sendBackgroundSheetUpdate = (updatedRec: ParticipantCheckInRecord) => {
+    if (!activeWebhookUrl) return;
+    const stats = memberStats.get(updatedRec.memberName);
+    updateParticipantOnSheet(
+      activeWebhookUrl,
+      updatedRec,
+      stats?.parts,
+      stats?.rentalItems.join('/')
+    ).then(res => {
+      if (res.success) {
+        setLastSyncTime(new Date().toLocaleTimeString('ja-JP'));
+        setSyncStatus('connected');
+      }
+    }).catch(err => {
+      console.warn('Background sheet update failed', err);
+    });
+  };
+
   // 単一レコード更新
   const updateRecord = (name: string, partial: Partial<ParticipantCheckInRecord>) => {
     const current = getRecord(name);
@@ -171,6 +217,9 @@ export default function ReceptionManagementModal({
 
     const next = { ...records, [name]: updated };
     onRecordsChange(next);
+
+    // スプレッドシート連携が有効な場合は非同期送信
+    sendBackgroundSheetUpdate(updated);
   };
 
   // レンタル加算トグル（手動変更可能）
@@ -223,6 +272,177 @@ export default function ReceptionManagementModal({
     const current = getRecord(name);
     updateRecord(name, { partyJoined: !current.partyJoined });
   };
+
+  // 📊 スプレッドシートからの手動同期
+  const handleSyncFromSheet = async (targetUrl = activeWebhookUrl) => {
+    if (!targetUrl || !targetUrl.trim().startsWith('http')) {
+      setSyncMessage('有効なWebhook URLを入力してください');
+      setSyncStatus('error');
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncStatus('syncing');
+    setSyncMessage(null);
+
+    try {
+      const res = await fetchSheetData(targetUrl);
+      if (res.success && res.records) {
+        if (!res.initialized) {
+          setSyncMessage('スプレッドシートはまだ初期化されていません。「初期セットアップ」ボタンを押してください。');
+          setSyncStatus('idle');
+        } else {
+          // リモートレコードをローカルレコードにマージ
+          const nextRecords: Record<string, ParticipantCheckInRecord> = { ...records };
+          allMembers.forEach(name => {
+            const current = getRecord(name);
+            const remote = res.records?.[name];
+            if (remote) {
+              nextRecords[name] = {
+                ...current,
+                paid: remote.paid,
+                checkedIn: remote.checkedIn,
+                checkInTime: remote.checkInTime || current.checkInTime,
+                partyJoined: remote.partyJoined !== undefined ? remote.partyJoined : current.partyJoined,
+                hasRental: remote.hasRental !== undefined ? remote.hasRental : current.hasRental,
+                notes: remote.notes || current.notes
+              };
+            }
+          });
+          onRecordsChange(nextRecords);
+          setSyncStatus('connected');
+          const time = new Date().toLocaleTimeString('ja-JP');
+          setLastSyncTime(time);
+          setSyncMessage(`✓ スプレッドシートから最新データを同期しました (${time})`);
+        }
+      } else {
+        setSyncStatus('error');
+        setSyncMessage(`同期エラー: ${res.error || '通信に失敗しました'}`);
+      }
+    } catch (e: any) {
+      setSyncStatus('error');
+      setSyncMessage(`通信エラー: ${e.message || '接続できませんでした'}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // 📊 空のスプレッドシートを初期化（見出し＆参加者一覧を作成）
+  const handleInitSheet = async () => {
+    const targetUrl = webhookInput.trim() || activeWebhookUrl;
+    if (!targetUrl || !targetUrl.startsWith('http')) {
+      setSyncMessage('Webhook URLを入力してください');
+      return;
+    }
+
+    setIsInitializingSheet(true);
+    setSyncMessage(null);
+
+    const participants = allMembers.map(name => {
+      const rec = getRecord(name);
+      const stats = memberStats.get(name);
+      return {
+        memberName: name,
+        songCount: stats?.songCount || 0,
+        parts: stats?.parts || [],
+        hasRental: rec.hasRental,
+        rentalItemName: stats?.rentalItems.join('/') || '',
+        partyJoined: rec.partyJoined,
+        calculatedFee: rec.calculatedFee,
+        paid: rec.paid,
+        checkedIn: rec.checkedIn,
+        checkInTime: rec.checkInTime || '',
+        notes: rec.notes || ''
+      };
+    });
+
+    try {
+      const res = await initSpreadsheet(targetUrl, participants);
+      if (res.success) {
+        setSyncStatus('connected');
+        const time = new Date().toLocaleTimeString('ja-JP');
+        setLastSyncTime(time);
+        setSyncMessage(`🎉 スプレッドシートの初期セットアップが完了しました！(${participants.length}名登録)`);
+        if (onSpreadsheetWebhookUrlChange && targetUrl !== activeWebhookUrl) {
+          onSpreadsheetWebhookUrlChange(targetUrl);
+        }
+      } else {
+        setSyncStatus('error');
+        setSyncMessage(`初期化エラー: ${res.error || '失敗しました'}`);
+      }
+    } catch (e: any) {
+      setSyncStatus('error');
+      setSyncMessage(`初期化通信エラー: ${e.message}`);
+    } finally {
+      setIsInitializingSheet(false);
+    }
+  };
+
+  // 📊 Webhook URLの保存
+  const handleSaveWebhookUrl = () => {
+    const trimmed = webhookInput.trim();
+    if (onSpreadsheetWebhookUrlChange) {
+      onSpreadsheetWebhookUrlChange(trimmed);
+    }
+    if (trimmed) {
+      handleSyncFromSheet(trimmed);
+    } else {
+      setSyncStatus('idle');
+      setSyncMessage('スプレッドシート連携を解除しました');
+    }
+  };
+
+  // 📊 GASコードのコピー
+  const handleCopyGasCode = () => {
+    navigator.clipboard.writeText(GAS_SCRIPT_CODE);
+    setCopiedGasCode(true);
+    setTimeout(() => setCopiedGasCode(false), 3000);
+  };
+
+  // 📊 バックグラウンド自動ポーリング（モーダル表示中、6秒おきにスプシの最新状況を巡回取得）
+  useEffect(() => {
+    if (!isOpen || !activeWebhookUrl) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetchSheetData(activeWebhookUrl);
+        if (res.success && res.records && res.initialized) {
+          allMembers.forEach(name => {
+            const remote = res.records?.[name];
+            if (remote) {
+              const current = getRecord(name);
+              if (
+                current.paid !== remote.paid ||
+                current.checkedIn !== remote.checkedIn ||
+                current.partyJoined !== remote.partyJoined ||
+                current.hasRental !== remote.hasRental
+              ) {
+                // リモートで変更があった場合のみ更新
+                onRecordsChange({
+                  ...records,
+                  [name]: {
+                    ...current,
+                    paid: remote.paid,
+                    checkedIn: remote.checkedIn,
+                    checkInTime: remote.checkInTime || current.checkInTime,
+                    partyJoined: remote.partyJoined !== undefined ? remote.partyJoined : current.partyJoined,
+                    hasRental: remote.hasRental !== undefined ? remote.hasRental : current.hasRental,
+                    notes: remote.notes || current.notes
+                  }
+                });
+              }
+            }
+          });
+          setSyncStatus('connected');
+          setLastSyncTime(new Date().toLocaleTimeString('ja-JP'));
+        }
+      } catch (e) {
+        // バックグラウンドポーリングのエラーは静かに握りつぶす
+      }
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [isOpen, activeWebhookUrl, allMembers, records]);
 
   // 料金設定変更ハンドラ
   const handleUpdateTier = (id: string, field: keyof PricingTier, value: any) => {
@@ -539,6 +759,24 @@ export default function ReceptionManagementModal({
               <Settings className="w-3.5 h-3.5" />
               <span>料金ルール設定</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('sheets')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'sheets'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-400" />
+              <span>スプレッドシート連携</span>
+              {activeWebhookUrl ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="スプレッドシート連携中" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-slate-500" title="未連携" />
+              )}
+            </button>
           </div>
 
           {/* クイック集金サマリーミニバッジ */}
@@ -560,6 +798,50 @@ export default function ReceptionManagementModal({
           {/* TAB 1: 参加者一覧・チェックイン */}
           {activeTab === 'list' && (
             <div className="space-y-4">
+              {/* 📊 スプレッドシート同期ミニステータスバー */}
+              <div className={`p-2.5 px-3.5 rounded-2xl border flex items-center justify-between gap-2 text-xs ${
+                activeWebhookUrl
+                  ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : isDark ? 'bg-slate-950/40 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {activeWebhookUrl ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="font-bold">Googleスプレッドシート同期中</span>
+                      {lastSyncTime && <span className="opacity-75 text-[11px] font-mono">（最終同期: {lastSyncTime}）</span>}
+                    </>
+                  ) : (
+                    <>
+                      <Radio className="w-3.5 h-3.5 opacity-50" />
+                      <span>スプレッドシート未連携（複数スマホでリアルタイム共有するには「スプレッドシート連携」タブでURLを設定してください）</span>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {activeWebhookUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSyncFromSheet()}
+                      disabled={isSyncing}
+                      className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                      <span>{isSyncing ? '同期中...' : '今すぐ同期'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('sheets')}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all"
+                    >
+                      連携設定を開く
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* フロー案内バナー */}
               <div className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
                 isDark ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-200' : 'bg-indigo-50/70 border-indigo-200 text-indigo-900'
@@ -1082,6 +1364,197 @@ export default function ReceptionManagementModal({
                   </div>
                   {restoreError && <p className="text-xs text-rose-400 font-medium">{restoreError}</p>}
                   {restoreSuccess && <p className="text-xs text-emerald-400 font-medium">✓ データを正常に復元・同期しました！</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: スプレッドシート連携 */}
+          {activeTab === 'sheets' && (
+            <div className="space-y-6">
+              {/* 連携ステータスカード */}
+              <div className={`p-4 sm:p-5 rounded-2xl border ${
+                activeWebhookUrl
+                  ? isDark ? 'bg-emerald-950/20 border-emerald-500/40' : 'bg-emerald-50/70 border-emerald-300'
+                  : isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md shrink-0 ${
+                      activeWebhookUrl ? 'bg-emerald-600 shadow-emerald-500/25' : 'bg-slate-700'
+                    }`}>
+                      <Database className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold flex items-center gap-2">
+                        <span>Googleスプレッドシート連携ステータス</span>
+                        {activeWebhookUrl ? (
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            連携中・リアルタイム同期
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-slate-500/20 text-slate-400 border border-slate-500/40 px-2 py-0.5 rounded-full font-bold">
+                            ⚪ 未連携
+                          </span>
+                        )}
+                      </h4>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {activeWebhookUrl 
+                          ? `複数のスタッフスマホ間で支払い＆入場ステータスを自動同期します（最終同期: ${lastSyncTime || '未実行'}）` 
+                          : 'GoogleスプレッドシートのWebhook URLを設定すると、複数スタッフのスマホ間で受付状況をリアルタイム同期できます'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {activeWebhookUrl && (
+                    <button
+                      type="button"
+                      onClick={() => handleSyncFromSheet()}
+                      disabled={isSyncing}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md active:scale-95 disabled:opacity-50 shrink-0"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                      <span>{isSyncing ? '同期中...' : '今すぐ最新同期'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {syncMessage && (
+                  <div className={`mt-3 p-2.5 rounded-xl text-xs font-medium ${
+                    syncStatus === 'connected'
+                      ? isDark ? 'bg-emerald-900/40 text-emerald-200 border border-emerald-500/30' : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                      : isDark ? 'bg-rose-900/40 text-rose-200 border border-rose-500/30' : 'bg-rose-100 text-rose-900 border border-rose-200'
+                  }`}>
+                    {syncMessage}
+                  </div>
+                )}
+              </div>
+
+              {/* Webhook URL 設定 ＆ 初期化 */}
+              <div className={`p-4 sm:p-5 rounded-2xl border space-y-4 ${
+                isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <h4 className="text-sm font-bold flex items-center gap-1.5">
+                  <ExternalLink className="w-4 h-4 text-indigo-400" />
+                  <span>Google Apps Script (GAS) Webhook URL の設定</span>
+                </h4>
+
+                <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                  発行された「ウェブアプリのURL」を貼り付けてください。登録されたURLはタイムテーブル共有リンク（/view#d=...）にも自動的に含まれ、スタッフ全員のスマホで即座に同期が有効になります。
+                </p>
+
+                <div className="space-y-2.5">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                      value={webhookInput}
+                      onChange={(e) => setWebhookInput(e.target.value)}
+                      className={`flex-1 border rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${
+                        isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveWebhookUrl}
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shrink-0"
+                    >
+                      URLを保存・接続
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleInitSheet}
+                      disabled={isInitializingSheet || !webhookInput.trim()}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all shadow-md active:scale-95 disabled:opacity-50"
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${isInitializingSheet ? 'animate-spin' : ''}`} />
+                      <span>{isInitializingSheet ? '初期セットアップ中...' : '空のスプレッドシートを初期化（参加者表を自動作成）'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3ステップ初期設定ガイド ＆ GASコード */}
+              <div className={`p-4 sm:p-5 rounded-2xl border space-y-4 ${
+                isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-sm font-bold flex items-center gap-1.5">
+                    <HelpCircle className="w-4 h-4 text-purple-400" />
+                    <span>かんたん3ステップ初期設定ガイド（完全無料・3分で完了）</span>
+                  </h4>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyGasCode}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-sm active:scale-95 shrink-0"
+                  >
+                    {copiedGasCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedGasCode ? 'GASコードをコピーしました！' : '専用GASコードをコピー'}</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className={`p-3.5 rounded-xl border space-y-1.5 ${
+                    isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center">1</span>
+                      <span className="text-xs font-bold">空のスプシを作成</span>
+                    </div>
+                    <p className={`text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Googleドライブで新規スプレッドシートを<strong>空（白紙）のまま</strong>作成します（名前は自由）。
+                    </p>
+                  </div>
+
+                  <div className={`p-3.5 rounded-xl border space-y-1.5 ${
+                    isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center">2</span>
+                      <span className="text-xs font-bold">スクリプトを貼り付け</span>
+                    </div>
+                    <p className={`text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      スプシのメニュー「<strong>拡張機能</strong>」→「<strong>Apps Script</strong>」を開き、コピーしたコードを貼り付けて保存します。
+                    </p>
+                  </div>
+
+                  <div className={`p-3.5 rounded-xl border space-y-1.5 ${
+                    isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center">3</span>
+                      <span className="text-xs font-bold">ウェブアプリとして公開</span>
+                    </div>
+                    <p className={`text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      右上の「<strong>デプロイ</strong>」→「<strong>新しいデプロイ</strong>」で種類を「ウェブアプリ」、アクセスを「<strong>全員</strong>」にしてデプロイ。発行されたURLを上に貼り付けます。
+                    </p>
+                  </div>
+                </div>
+
+                {/* スクリプトプレビュー切り替え */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowGasCodePreview(!showGasCodePreview)}
+                    className="text-xs font-semibold text-indigo-400 hover:underline flex items-center gap-1"
+                  >
+                    <span>{showGasCodePreview ? '▼ GASスクリプトコードを閉じる' : '▶ GASスクリプトコードを確認・表示する'}</span>
+                  </button>
+
+                  {showGasCodePreview && (
+                    <div className="mt-2 relative">
+                      <pre className={`p-3.5 rounded-xl text-[11px] font-mono overflow-x-auto max-h-64 border ${
+                        isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-900 border-slate-800 text-slate-200'
+                      }`}>
+                        <code>{GAS_SCRIPT_CODE}</code>
+                      </pre>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

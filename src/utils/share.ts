@@ -8,6 +8,7 @@ export interface SharedScheduleData {
   openingEndTime?: string;
   eventEndTime?: string;
   isExtended?: boolean;
+  spreadsheetWebhookUrl?: string;
   schedule: {
     startTime: string;
     endTime: string;
@@ -52,6 +53,7 @@ interface CompactPayload {
   oet?: string; // openingEndTime
   eet?: string; // eventEndTime
   ext?: number; // isExtended (1 or 0)
+  swu?: string; // spreadsheetWebhookUrl
   s: CompactSong[]; // schedule
 }
 
@@ -66,6 +68,7 @@ export function encodeScheduleToUrl(
     openingEndTime?: string;
     eventEndTime?: string;
     isExtended?: boolean;
+    spreadsheetWebhookUrl?: string;
   }
 ): string {
   const compactPayload: CompactPayload = {
@@ -74,6 +77,7 @@ export function encodeScheduleToUrl(
     oet: timeline?.openingEndTime,
     eet: timeline?.eventEndTime,
     ext: timeline?.isExtended ? 1 : 0,
+    swu: timeline?.spreadsheetWebhookUrl,
     s: schedule.map(item => {
       const s = item.song;
       const compact: CompactSong = [
@@ -108,7 +112,7 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
     if (!jsonStr) return null;
     const parsed = JSON.parse(jsonStr);
 
-    // 新形式 (CompactPayload: { t, s, est, oet, eet, ext }) の判定
+    // 新形式 (CompactPayload: { t, s, est, oet, eet, ext, swu }) の判定
     if (parsed && Array.isArray(parsed.s)) {
       const compact = parsed as CompactPayload;
       const isNoneVal = (val?: string) => !val || val === 'なし' || val === '無し' || val === '無' || val === 'none' || val === '-' || val === 'FALSE' || val === 'false';
@@ -120,6 +124,7 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
         openingEndTime: compact.oet,
         eventEndTime: compact.eet,
         isExtended: compact.ext === 1,
+        spreadsheetWebhookUrl: compact.swu,
         schedule: compact.s.map(c => {
           const rentalVal = !isNoneVal(c[6]) ? c[6] : undefined;
           const bringVal = !isNoneVal(c[7]) ? c[7] : undefined;
