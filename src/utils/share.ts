@@ -31,18 +31,18 @@ export interface SharedScheduleData {
   }[];
 }
 
-// 超コンパクトミニファイ構造
-// [startTime, endTime, title, category, band, artist, rental, bring, [[part, name], ...], isBreak, rawNotes]
-type CompactSong = [
+// 辞書型圧縮対応の構造
+// [startTime, endTime, title, categoryIdx, bandIdx, artistIdx, rental, bring, [[partIdx, nameIdx], ...], isBreak, rawNotes]
+type DictionarySong = [
   string, // 0: startTime
   string, // 1: endTime
   string, // 2: title
-  string, // 3: category
-  string, // 4: band
-  string, // 5: artist
+  number, // 3: category (index in dict, or -1)
+  number, // 4: band (index in dict, or -1)
+  number, // 5: artist (index in dict, or -1)
   string, // 6: rental
   string, // 7: bring
-  [string, string][], // 8: members [[part, name], ...]
+  [number, number][], // 8: members [[partIdx, nameIdx], ...]
   number, // 9: isBreakAfter (1 or 0)
   string? // 10: rawNotes (optional)
 ];
@@ -54,7 +54,24 @@ interface CompactPayload {
   eet?: string; // eventEndTime
   ext?: number; // isExtended (1 or 0)
   swu?: string; // spreadsheetWebhookUrl
-  s: CompactSong[]; // schedule
+  d: string[]; // dictionary of common strings (new format)
+  s: DictionarySong[]; // schedule
+}
+
+class StringDictionary {
+  strings: string[] = [];
+  dict: Map<string, number> = new Map();
+
+  getIndex(str: string | undefined | null): number {
+    if (!str) return -1;
+    if (this.dict.has(str)) {
+      return this.dict.get(str)!;
+    }
+    const idx = this.strings.length;
+    this.strings.push(str);
+    this.dict.set(str, idx);
+    return idx;
+  }
 }
 
 /**
@@ -71,6 +88,28 @@ export function encodeScheduleToUrl(
     spreadsheetWebhookUrl?: string;
   }
 ): string {
+  const dictionary = new StringDictionary();
+
+  const compactSongs: DictionarySong[] = schedule.map(item => {
+    const s = item.song;
+    const compact: DictionarySong = [
+      item.startTime,
+      item.endTime,
+      s.title,
+      dictionary.getIndex(s.category),
+      dictionary.getIndex(s.bandName),
+      dictionary.getIndex(s.artist),
+      s.rental || '',
+      s.bring || '',
+      s.members.map(m => [dictionary.getIndex(m.part), dictionary.getIndex(m.name)]),
+      item.isBreakAfter ? 1 : 0
+    ];
+    if (s.rawNotes) {
+      compact.push(s.rawNotes);
+    }
+    return compact;
+  });
+
   const compactPayload: CompactPayload = {
     t: sessionTitle || '軽音セッション タイムテーブル',
     est: timeline?.eventStartTime,
@@ -78,25 +117,8 @@ export function encodeScheduleToUrl(
     eet: timeline?.eventEndTime,
     ext: timeline?.isExtended ? 1 : 0,
     swu: timeline?.spreadsheetWebhookUrl,
-    s: schedule.map(item => {
-      const s = item.song;
-      const compact: CompactSong = [
-        item.startTime,
-        item.endTime,
-        s.title,
-        s.category || '',
-        s.bandName || '',
-        s.artist || '',
-        s.rental || '',
-        s.bring || '',
-        s.members.map(m => [m.part, m.name]),
-        item.isBreakAfter ? 1 : 0
-      ];
-      if (s.rawNotes) {
-        compact.push(s.rawNotes);
-      }
-      return compact;
-    })
+    d: dictionary.strings,
+    s: compactSongs
   };
 
   const jsonStr = JSON.stringify(compactPayload);
@@ -104,7 +126,7 @@ export function encodeScheduleToUrl(
 }
 
 /**
- * URL のハッシュ文字列からスケジュールデータを復元（新旧両対応）
+ * URL のハッシュ文字列からスケジュールデータを復元
  */
 export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData | null {
   try {
@@ -112,10 +134,14 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
     if (!jsonStr) return null;
     const parsed = JSON.parse(jsonStr);
 
-    // 新形式 (CompactPayload: { t, s, est, oet, eet, ext, swu }) の判定
     if (parsed && Array.isArray(parsed.s)) {
       const compact = parsed as CompactPayload;
+      const dict = compact.d || [];
       const isNoneVal = (val?: string) => !val || val === 'なし' || val === '無し' || val === '無' || val === 'none' || val === '-' || val === 'FALSE' || val === 'false';
+      
+      const resolveString = (val: number): string => {
+        return val >= 0 && val < dict.length ? dict[val] : '';
+      };
 
       return {
         title: compact.t,
@@ -137,26 +163,21 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
             isBreakAfter: c[9] === 1,
             song: {
               title: c[2],
-              category: c[3] || undefined,
-              bandName: c[4] || undefined,
-              artist: c[5] || undefined,
+              category: resolveString(c[3]) || undefined,
+              bandName: resolveString(c[4]) || undefined,
+              artist: resolveString(c[5]) || undefined,
               rental: rentalVal,
               bring: bringVal,
               requiresLongSetup,
               rawNotes: c[10] || undefined,
               members: (c[8] || []).map(m => ({
-                part: m[0],
-                name: m[1]
+                part: resolveString(m[0]),
+                name: resolveString(m[1])
               }))
             }
           };
         })
       };
-    }
-
-    // 旧形式 (SharedScheduleData) の互換フォールバック
-    if (parsed && Array.isArray(parsed.schedule)) {
-      return parsed as SharedScheduleData;
     }
 
     return null;
