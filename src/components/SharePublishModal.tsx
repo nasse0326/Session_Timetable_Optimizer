@@ -122,39 +122,47 @@ ${shareUrl}`;
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
             {/* QRコード表示 */}
             <div className="flex flex-col items-center justify-center p-3 bg-slate-900 rounded-xl border border-slate-800/80">
-              <div ref={qrRef} className="p-3 bg-white rounded-xl shadow-inner mb-2 flex flex-col items-center justify-center min-w-[150px] min-h-[150px]">
-                {shareUrl ? (
-                  <>
-                    <QRCodeSVG 
-                      value={shareUrl} 
+              {/* QRコードはデータ上限(~2953バイト)があるため、URL長が超える場合はスキップ */}
+              {shareUrl && shareUrl.length <= 2800 ? (
+                <>
+                  <div ref={qrRef} className="p-3 bg-white rounded-xl shadow-inner mb-2 flex flex-col items-center justify-center min-w-[150px] min-h-[150px]">
+                    <QRCodeSVG
+                      value={shareUrl}
                       size={140}
                       level="L"
                       marginSize={0}
                     />
                     <div className="hidden">
-                      <QRCodeCanvas 
-                        value={shareUrl} 
+                      <QRCodeCanvas
+                        value={shareUrl}
                         size={400}
                         level="L"
                         marginSize={2}
                       />
                     </div>
-                  </>
-                ) : (
-                  <div className="text-[10px] text-slate-500 text-center">
-                    QRコード準備中
                   </div>
-                )}
-              </div>
-
-              {shareUrl && (
-                <button
-                  onClick={handleDownloadQr}
-                  className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 hover:bg-slate-800 px-3 py-1 rounded-lg transition-colors font-medium"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  QR画像を保存 (高画質)
-                </button>
+                  <button
+                    onClick={handleDownloadQr}
+                    className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 hover:bg-slate-800 px-3 py-1 rounded-lg transition-colors font-medium"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    QR画像を保存 (高画質)
+                  </button>
+                </>
+              ) : shareUrl ? (
+                <div className="flex flex-col items-center justify-center gap-2 text-center p-4 min-h-[150px]">
+                  <QrCode className="w-8 h-8 text-slate-600" />
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    曲数が多いためQRコードを<br />生成できません。
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    上のURLをコピーしてLINE等で共有してください
+                  </p>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-500 text-center min-h-[150px] flex items-center">
+                  QRコード準備中
+                </div>
               )}
             </div>
 
