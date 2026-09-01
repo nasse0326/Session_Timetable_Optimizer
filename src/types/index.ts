@@ -53,6 +53,7 @@ export interface SessionConfig {
     efficiency: number;
     longSetup: number;
     assignment?: number;
+    rentalConsecutive?: number;
   };
 }
 

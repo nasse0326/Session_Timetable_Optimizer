@@ -59,6 +59,9 @@ interface ReceptionManagementModalProps {
   onPricingConfigChange: (config: PaymentConfig) => void;
   spreadsheetWebhookUrl?: string;
   onSpreadsheetWebhookUrlChange?: (url: string) => void;
+  adminPassword?: string;
+  isAuthenticated?: boolean;
+  onAuthenticate?: () => void;
 }
 
 export default function ReceptionManagementModal({
@@ -72,7 +75,10 @@ export default function ReceptionManagementModal({
   pricingConfig,
   onPricingConfigChange,
   spreadsheetWebhookUrl,
-  onSpreadsheetWebhookUrlChange
+  onSpreadsheetWebhookUrlChange,
+  adminPassword,
+  isAuthenticated,
+  onAuthenticate
 }: ReceptionManagementModalProps) {
   const [activeTab, setActiveTab] = useState<'list' | 'settings' | 'summary' | 'sheets'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +86,7 @@ export default function ReceptionManagementModal({
   const [copiedBackup, setCopiedBackup] = useState(false);
   const [copiedTsv, setCopiedTsv] = useState(false);
   const [restoreText, setRestoreText] = useState('');
+  const [pinInput, setPinInput] = useState('');
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreSuccess, setRestoreSuccess] = useState(false);
 
@@ -663,6 +670,40 @@ export default function ReceptionManagementModal({
   };
 
   if (!isOpen) return null;
+
+  if (adminPassword && !isAuthenticated) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div className={`border rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col p-6 text-center ${isDark ? 'bg-slate-900 border-indigo-500/30' : 'bg-white border-indigo-200'}`}>
+          <div className="flex justify-center mb-4 text-indigo-500">
+            <Settings className="w-10 h-10" />
+          </div>
+          <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>受付管理画面</h3>
+          <p className={`text-xs mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            アクセスするには管理用パスワードを入力してください。
+          </p>
+          <input 
+            type="password" 
+            value={pinInput} 
+            onChange={(e) => setPinInput(e.target.value)}
+            className={`w-full text-center tracking-widest text-lg px-4 py-3 rounded-xl border mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isDark ? 'bg-slate-950 text-white border-slate-700' : 'bg-slate-50 text-slate-800 border-slate-200'}`}
+            placeholder="パスワード"
+          />
+          <div className="flex gap-2">
+            <button onClick={onClose} className={`flex-1 py-3 rounded-xl font-semibold transition-all ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+              キャンセル
+            </button>
+            <button 
+              onClick={() => { if (pinInput === adminPassword) { onAuthenticate?.(); } else { alert('パスワードが違います'); } }}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold transition-all shadow-md"
+            >
+              入室
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">

@@ -69,6 +69,7 @@ export default function StepResult({
   // 確定共有モーダルの状態
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
   // ドラッグ＆ドロップ用ステート
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
@@ -137,7 +138,8 @@ export default function StepResult({
         eventStartTime: result.eventStartTime,
         openingEndTime: result.openingEndTime,
         eventEndTime: result.eventEndTime,
-        isExtended: result.isExtended
+        isExtended: result.isExtended,
+        adminPassword: adminPassword || undefined
       });
       const url = `${window.location.origin}/view#d=${compressed}`;
       setShareUrl(url);
@@ -481,9 +483,31 @@ export default function StepResult({
               className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl shadow-lg shadow-emerald-600/20 hover:shadow-emerald-600/35 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0"
             >
               <Share2 className="w-4 h-4" />
-              <span>タイムテーブルを確定して共有URLを発行</span>
+              <span>タイムテーブル確定して共有URLを発行</span>
             </button>
           </div>
+
+            {/* パスワード設定 (任意) */}
+            <div className="mt-3 p-3 bg-slate-950/50 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <span>🔒 受付管理画面のパスワード (任意)</span>
+                </p>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  未設定の場合、誰でもパスワードなしで管理画面を開けます。<br className="hidden sm:block" />
+                  参加者にURLを共有する場合は設定を推奨します。
+                </p>
+              </div>
+              <div className="w-full sm:w-48 shrink-0">
+                <input
+                  type="text"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="例: 1234"
+                  className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 font-mono"
+                />
+              </div>
+            </div>
 
           {/* 出力結果コンテナ */}
           <div className="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden shadow-inner">

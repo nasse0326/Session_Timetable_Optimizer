@@ -10,6 +10,7 @@ export interface SharedScheduleData {
   eventEndTime?: string;
   isExtended?: boolean;
   spreadsheetWebhookUrl?: string;
+  adminPassword?: string;
   schedule: {
     startTime: string;
     endTime: string;
@@ -112,6 +113,7 @@ interface UltraCompactPayload {
   eet?: number;
   ext?: number;
   swu?: string;
+  pw?: string;
   d: string[];
   s: UltraCompactSong[];
 }
@@ -128,6 +130,7 @@ export function encodeScheduleToUrl(
     eventEndTime?: string;
     isExtended?: boolean;
     spreadsheetWebhookUrl?: string;
+    adminPassword?: string;
   }
 ): string {
   const dictionary = new StringDictionary();
@@ -163,12 +166,13 @@ export function encodeScheduleToUrl(
   });
 
   const payload: UltraCompactPayload = {
-    t: sessionTitle || '軽音セッション タイムテーブル',
+    t: sessionTitle || 'セッション タイムテーブル',
     est: toMinutes(timeline?.eventStartTime),
     oet: toMinutes(timeline?.openingEndTime),
     eet: toMinutes(timeline?.eventEndTime),
     ext: timeline?.isExtended ? 1 : undefined,
     swu: timeline?.spreadsheetWebhookUrl,
+    pw: timeline?.adminPassword,
     d: dictionary.strings,
     s: compactSongs
   };
@@ -200,6 +204,7 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
         eventEndTime: fromMinutes(p.eet),
         isExtended: p.ext === 1,
         spreadsheetWebhookUrl: p.swu,
+        adminPassword: p.pw,
         schedule: p.s.map(c => {
           const [startMin, endMin, title, memsFlat, catIdx, bandIdx, artIdx, rentIdx, bringIdx, isBreak, notesIdx] = c;
           const mems: { part: string; name: string }[] = [];
@@ -255,6 +260,7 @@ export function decodeScheduleFromUrl(compressedStr: string): SharedScheduleData
         eventEndTime: compact.eet,
         isExtended: compact.ext === 1,
         spreadsheetWebhookUrl: compact.swu,
+        adminPassword: compact.pw,
         schedule: compact.s.map((c: any) => {
           return {
             startTime: c[0],

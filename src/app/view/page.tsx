@@ -5,6 +5,7 @@ import { decodeScheduleFromUrl, SharedScheduleData } from '@/utils/share';
 import AdInlineBanner from '@/components/AdInlineBanner';
 import ReceptionManagementModal from '@/components/ReceptionManagementModal';
 import VenueCheckInQrModal from '@/components/VenueCheckInQrModal';
+import ParticipantQrModal from '@/components/ParticipantQrModal';
 import { aggregateMemberRentalInfo } from '@/utils/rental';
 import { updateParticipantOnSheet } from '@/utils/spreadsheetSync';
 import { 
@@ -112,7 +113,9 @@ function ParticipantViewContent() {
 
   // 受付・集金管理モーダル状態 & データ永続化
   const [isReceptionModalOpen, setIsReceptionModalOpen] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [isVenueQrModalOpen, setIsVenueQrModalOpen] = useState(false);
+  const [isParticipantQrModalOpen, setIsParticipantQrModalOpen] = useState(false);
   const [pricingConfig, setPricingConfig] = useState<PaymentConfig>(DEFAULT_PRICING_CONFIG);
   const [records, setRecords] = useState<Record<string, ParticipantCheckInRecord>>({});
 
@@ -1390,7 +1393,7 @@ function ParticipantViewContent() {
                   <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                     {selectedMemberSummary.record?.checkedIn
                       ? `✓ 入場チェックインが完了しました (${selectedMemberSummary.record.checkInTime || '済'})`
-                      : '受付デスクでお支払い後、受付の入場用QRコードを読み取るか提示してチェックインを完了してください。'}
+                      : '入場用QRコードを表示して、受付スタッフに提示してください。'}
                   </p>
                 </div>
 
@@ -1403,11 +1406,11 @@ function ParticipantViewContent() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setIsVenueQrModalOpen(true)}
+                      onClick={() => setIsParticipantQrModalOpen(true)}
                       className="w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition-all active:scale-95"
                     >
                       <QrCode className="w-4 h-4" />
-                      <span>受付用QRコードを表示・確認する</span>
+                      <span>自分の入場用QRコードを表示する</span>
                     </button>
                   )}
                 </div>
@@ -1888,6 +1891,9 @@ function ParticipantViewContent() {
         onPricingConfigChange={handlePricingConfigChange}
         spreadsheetWebhookUrl={spreadsheetWebhookUrl}
         onSpreadsheetWebhookUrlChange={handleSpreadsheetWebhookUrlChange}
+        adminPassword={data.adminPassword}
+        isAuthenticated={isAdminAuthenticated}
+        onAuthenticate={() => setIsAdminAuthenticated(true)}
       />
 
       {/* 会場受付用QRコードモーダル */}
@@ -1895,6 +1901,14 @@ function ParticipantViewContent() {
         isOpen={isVenueQrModalOpen}
         onClose={() => setIsVenueQrModalOpen(false)}
         eventTitle={data?.title}
+        isDark={isDark}
+      />
+
+      {/* 参加者個人の入場用QRコードモーダル */}
+      <ParticipantQrModal
+        isOpen={isParticipantQrModalOpen}
+        onClose={() => setIsParticipantQrModalOpen(false)}
+        memberName={selectedMember || ''}
         isDark={isDark}
       />
 

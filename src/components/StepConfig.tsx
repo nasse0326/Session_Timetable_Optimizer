@@ -285,6 +285,13 @@ export default function StepConfig({ config, onChange, constraints = [], songs =
             value={config.weights.efficiency} 
             onChange={(v) => handleWeightChange('efficiency', v)} 
           />
+          <WeightSlider 
+            label="レンタル機材（鍵盤等）の連続集約" 
+            icon="🎹" 
+            description="ピアノやキーボード等のレンタル機材を使用する曲を極力連続・ひとまとまりに集約し、機材レンタル時間と費用を圧縮します。"
+            value={config.weights.rentalConsecutive ?? 1.0} 
+            onChange={(v) => handleWeightChange('rentalConsecutive', v)} 
+          />
         </div>
       </div>
 

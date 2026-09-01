@@ -47,6 +47,25 @@ export function generateSchedule(
   return schedule;
 }
 
+export function getSongRentalCategory(song: Song): 'key' | 'other' | 'none' {
+  const rental = (song.rental || '').toLowerCase().trim();
+  const notes = (song.rawNotes || '').toLowerCase().trim();
+  
+  const isNone = !rental || rental === 'なし' || rental === '無し' || rental === '無' || rental === 'none' || rental === '-' || rental === 'false';
+  const hasRentalKeyword = notes.includes('レンタル') || notes.includes('借用');
+  
+  if (isNone && !hasRentalKeyword) return 'none';
+  
+  const combined = `${rental} ${notes}`;
+  const keyKeywords = ['ピアノ', 'piano', 'key', 'pf', 'シンセ', 'オルガン', 'エレピ', 'エレキピアノ', '電子ピアノ', 'キーボード', 'nord', 'roland'];
+  
+  const isKey = keyKeywords.some(kw => combined.includes(kw)) ||
+    (song.members.some(m => /(key|キーボード|pf|piano|ピアノ|シンセ|オルガン|鍵盤)/i.test(m.part)) && !isNone);
+
+  if (isKey) return 'key';
+  return 'other';
+}
+
 export function evaluateSchedule(
   schedule: ScheduledSong[],
   constraints: MemberConstraint[],
@@ -70,6 +89,7 @@ export function evaluateSchedule(
     efficiency: config.weights?.efficiency ?? 1.0,
     longSetup: config.weights?.longSetup ?? 1.0,
     assignment: config.weights?.assignment ?? 1.0,
+    rentalConsecutive: config.weights?.rentalConsecutive ?? 1.0,
   };
   const isLive = config.mode === 'live';
   
@@ -97,8 +117,8 @@ export function evaluateSchedule(
 
     // 0.5. Assignment song placement (課題曲を開始側に集約)
     if (item.song.isAssignment && W.assignment > 0) {
-      // 曲順インデックス i が後ろになるほどペナルティ
-      score += i * 40 * W.assignment;
+      // 曲順インデックス i が後ろになるほどペナルティ (インデックス比例はマイルドに調整)
+      score += i * 10 * W.assignment;
 
       // 前半（全体の半分）以降に配置された場合の追加ペナルティ
       const midpoint = Math.ceil(schedule.length / 2);
@@ -210,18 +230,25 @@ export function evaluateSchedule(
       const totalUnique = new Set([...Array.from(currentMemberNames), ...Array.from(prevMemberNames)]).size;
       const overlapRatio = totalUnique > 0 ? overlapCount / totalUnique : 0;
       const isHighOverlap = overlapRatio >= 0.49; // approx >= 50%
+      const isSuperHighOverlap = overlapRatio >= 0.79; // 実質同一バンド
 
+      const isSameBandInLive = isLive && item.song.bandName && prevItem.song.bandName && item.song.bandName === prevItem.song.bandName;
       const isBreakBetween = prevItem.isBreakAfter;
 
       if (!isBreakBetween) {
-        if (isHighOverlap) {
+        if (isSameBandInLive) {
+          // Liveモードで同じバンドが続く場合は大正解（強力なボーナス）
+          score -= 200 * W.placement;
+          // ※メンバーごとの転換やボーカル連続ペナルティは全て免除
+        } else if (isHighOverlap) {
           // Band overlap bonus (Transition Efficiency)
           score -= 30 * W.efficiency; // Bonus
-          // Check for vocal consecutive even in overlap unless assignment
+          
+          // Check for vocal consecutive even in overlap unless assignment or super high overlap
           const currentVo = item.song.members.filter(m => m.part.includes('Vo') || m.part.includes('ボーカル'));
           const prevVo = prevItem.song.members.filter(m => m.part.includes('Vo') || m.part.includes('ボーカル'));
           
-          if (!item.song.isAssignment && !prevItem.song.isAssignment) {
+          if (!item.song.isAssignment && !prevItem.song.isAssignment && !isSuperHighOverlap) {
             for (const cV of currentVo) {
               if (prevVo.some(pV => pV.name === cV.name)) {
                 score += 100 * W.vocal;
@@ -245,6 +272,10 @@ export function evaluateSchedule(
           }
         } else {
           // Normal consecutive play check
+          const prevRentalCat = getSongRentalCategory(prevItem.song);
+          const currRentalCat = getSongRentalCategory(item.song);
+          const isRentalConsecutive = (W.rentalConsecutive > 0 && currRentalCat !== 'none' && prevRentalCat === currRentalCat);
+
           for (const prevMember of prevItem.song.members) {
             const currentMember = item.song.members.find(m => m.name === prevMember.name);
             if (currentMember) {
@@ -253,7 +284,7 @@ export function evaluateSchedule(
               const wasVo = prevMember.part.includes('Vo') || prevMember.part.includes('ボーカル');
               const isVo = currentMember.part.includes('Vo') || currentMember.part.includes('ボーカル');
               
-              if (wasVo && isVo && !item.song.isAssignment && !prevItem.song.isAssignment) {
+              if (wasVo && isVo && !item.song.isAssignment && !prevItem.song.isAssignment && !isSuperHighOverlap) {
                 score += 100 * W.vocal;
                 violations.vocalConsecutive++;
                 if (!item.conflicts.includes(`${currentMember.name}: ボーカル連続出演`)) item.conflicts.push(`${currentMember.name}: ボーカル連続出演`);
@@ -269,12 +300,31 @@ export function evaluateSchedule(
                 if (!item.conflicts.includes(`${currentMember.name}: ドラム転換あり連続`)) item.conflicts.push(`${currentMember.name}: ドラム転換あり連続`);
               } else {
                 // Normal consecutive
-                score += 10 * W.consecutive;
-                violations.consecutivePlay++;
-                if (!item.conflicts.includes(`${currentMember.name}: 連続出演`)) item.conflicts.push(`${currentMember.name}: 連続出演`);
+                if (isRentalConsecutive && currentMember.part.match(/(key|キーボード|pf|piano|ピアノ|シンセ|オルガン|鍵盤)/i)) {
+                  // レンタル機材据え置きによる連続なのでペナルティを半減
+                  score += 5 * W.consecutive;
+                } else {
+                  score += 10 * W.consecutive;
+                  violations.consecutivePlay++;
+                  if (!item.conflicts.includes(`${currentMember.name}: 連続出演`)) item.conflicts.push(`${currentMember.name}: 連続出演`);
+                }
               }
             }
           }
+        }
+      }
+
+      // 4. レンタル機材（特にキーボード/ピアノ）連続演奏ボーナス
+      if (W.rentalConsecutive > 0) {
+        const prevRentalCat = getSongRentalCategory(prevItem.song);
+        const currRentalCat = getSongRentalCategory(item.song);
+
+        if (currRentalCat === 'key' && prevRentalCat === 'key') {
+          // キーボード/ピアノレンタル曲同士の連続ボーナス (転換時間削減 & レンタル時間圧縮)
+          score -= 40 * W.rentalConsecutive;
+        } else if (currRentalCat !== 'none' && prevRentalCat === currRentalCat) {
+          // その他同一レンタル機材の連続ボーナス
+          score -= 20 * W.rentalConsecutive;
         }
       }
     }
@@ -296,6 +346,43 @@ export function evaluateSchedule(
           }
         }
       }
+    }
+  }
+
+  // Global pass: レンタル機材（特にキーボード/ピアノ等）の利用スパン（時間枠）最小化
+  if (W.rentalConsecutive > 0) {
+    const keyIndices: number[] = [];
+    const otherRentalIndices: number[] = [];
+
+    for (let idx = 0; idx < schedule.length; idx++) {
+      const cat = getSongRentalCategory(schedule[idx].song);
+      if (cat === 'key') keyIndices.push(idx);
+      else if (cat === 'other') otherRentalIndices.push(idx);
+    }
+
+    if (keyIndices.length > 1) {
+      const firstIdx = keyIndices[0];
+      const lastIdx = keyIndices[keyIndices.length - 1];
+      const span = lastIdx - firstIdx + 1;
+      const gaps = span - keyIndices.length; // レンタル曲の間に挟まる非レンタル曲数
+
+      // 間の空き曲数に対するペナルティ（ひとまとまりに集約させる）
+      score += gaps * 30 * W.rentalConsecutive;
+
+      // 最初と最後のキーボード曲の間に休憩を挟んでいる場合（スタジオ機材キープ時間延長のペナルティ）
+      let breaksBetween = 0;
+      for (let k = firstIdx; k < lastIdx; k++) {
+        if (schedule[k].isBreakAfter) breaksBetween++;
+      }
+      score += breaksBetween * 35 * W.rentalConsecutive;
+    }
+
+    if (otherRentalIndices.length > 1) {
+      const firstIdx = otherRentalIndices[0];
+      const lastIdx = otherRentalIndices[otherRentalIndices.length - 1];
+      const span = lastIdx - firstIdx + 1;
+      const gaps = span - otherRentalIndices.length;
+      score += gaps * 15 * W.rentalConsecutive;
     }
   }
 
@@ -358,11 +445,22 @@ export function optimizeSchedule(
 
   for (let r = 0; r < NUM_RESTARTS; r++) {
     let shuffledMovable: Song[];
-    if (r % 2 === 0 && movableSongs.some(s => s.isAssignment)) {
-      // 偶数回目の再起動では課題曲を前方に寄せた初期解からスタート
+    if (r % 3 === 0 && movableSongs.some(s => s.isAssignment)) {
+      // 課題曲を前方に寄せた初期解からスタート
       const assignments = movableSongs.filter(s => s.isAssignment);
       const nonAssignments = movableSongs.filter(s => !s.isAssignment);
       shuffledMovable = [...shuffle(assignments), ...shuffle(nonAssignments)];
+    } else if (r % 3 === 1 && movableSongs.some(s => getSongRentalCategory(s) === 'key')) {
+      // キーボード/ピアノレンタル曲を近接させた初期解からスタート
+      const keyRentals = movableSongs.filter(s => getSongRentalCategory(s) === 'key');
+      const nonKeyRentals = movableSongs.filter(s => getSongRentalCategory(s) !== 'key');
+      const shuffledNonKey = shuffle(nonKeyRentals);
+      const insertPos = Math.floor(Math.random() * (shuffledNonKey.length + 1));
+      shuffledMovable = [
+        ...shuffledNonKey.slice(0, insertPos),
+        ...shuffle(keyRentals),
+        ...shuffledNonKey.slice(insertPos)
+      ];
     } else {
       shuffledMovable = shuffle(movableSongs);
     }

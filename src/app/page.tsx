@@ -35,7 +35,8 @@ export default function Home() {
       placement: 1.0,
       efficiency: 1.0,
       longSetup: 1.0,
-      assignment: 1.0
+      assignment: 1.0,
+      rentalConsecutive: 1.0
     }
   });
 
