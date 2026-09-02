@@ -37,7 +37,8 @@ import {
   CheckCircle,
   HelpCircle,
   Database,
-  Radio
+  Radio,
+  Lock
 } from 'lucide-react';
 import { GAS_SCRIPT_CODE } from '@/utils/gasTemplate';
 import { 
@@ -81,6 +82,8 @@ export default function ReceptionManagementModal({
 }: ReceptionManagementModalProps) {
   const [activeTab, setActiveTab] = useState<'list' | 'settings' | 'summary' | 'sheets'>('list');
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingFeeMember, setEditingFeeMember] = useState<string | null>(null);
+  const [editingFeeValue, setEditingFeeValue] = useState<string>('');
   const [filterMode, setFilterMode] = useState<'all' | 'unCheckedIn' | 'checkedIn' | 'unpaid' | 'paid' | 'party'>('all');
   const [copiedBackup, setCopiedBackup] = useState(false);
   const [copiedTsv, setCopiedTsv] = useState(false);
@@ -243,14 +246,16 @@ export default function ReceptionManagementModal({
       updateRecord(name, {
         paid: true,
         checkedIn: true,
-        checkInTime: current.checkInTime || timeStr
+        checkInTime: current.checkInTime || timeStr,
+        customFee: current.customFee ?? current.calculatedFee
       });
     } else {
-      // 既に両方完了している場合は未払いに戻す（誤操作取消）
+      // 全て完了している場合は元に戻す（誤操作用）
       updateRecord(name, {
         paid: false,
         checkedIn: false,
-        checkInTime: undefined
+        checkInTime: undefined,
+        customFee: undefined
       });
     }
   };
@@ -266,10 +271,13 @@ export default function ReceptionManagementModal({
     });
   };
 
-  // 個別支払いトグル
+  // 単独支払トグル
   const handleTogglePaid = (name: string) => {
     const current = getRecord(name);
-    updateRecord(name, { paid: !current.paid });
+    updateRecord(name, { 
+      paid: !current.paid,
+      customFee: !current.paid ? (current.customFee ?? current.calculatedFee) : undefined
+    });
   };
 
   // 懇親会トグル
@@ -1055,7 +1063,52 @@ export default function ReceptionManagementModal({
 
                               {/* 料金 */}
                               <td className="px-3 py-2.5 text-right font-mono font-bold whitespace-nowrap">
-                                <div>¥{rec.calculatedFee.toLocaleString()}</div>
+                                {editingFeeMember === name ? (
+                                  <div className="flex items-center justify-end gap-1">
+                                    <span className="text-slate-400">¥</span>
+                                    <input 
+                                      type="number"
+                                      value={editingFeeValue}
+                                      onChange={(e) => setEditingFeeValue(e.target.value)}
+                                      className={`w-16 px-1 py-0.5 rounded text-right focus:outline-none focus:ring-1 focus:ring-indigo-500 ${isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-800'}`}
+                                    />
+                                    <button 
+                                      onClick={() => {
+                                        const val = parseInt(editingFeeValue);
+                                        if (!isNaN(val)) {
+                                          updateRecord(name, { customFee: val });
+                                        }
+                                        setEditingFeeMember(null);
+                                      }}
+                                      className="text-emerald-500 hover:text-emerald-400 p-1"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        updateRecord(name, { customFee: undefined });
+                                        setEditingFeeMember(null);
+                                      }}
+                                      className="text-slate-400 hover:text-slate-300 p-1"
+                                      title="自動計算に戻す"
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div 
+                                    className={`flex items-center justify-end gap-1.5 cursor-pointer group px-2 py-1 rounded-lg transition-colors ${rec.customFee !== undefined ? 'text-amber-500 hover:bg-amber-500/10' : (isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100')}`}
+                                    onClick={() => {
+                                      setEditingFeeMember(name);
+                                      setEditingFeeValue(String(rec.calculatedFee));
+                                    }}
+                                  >
+                                    <span title={rec.customFee !== undefined ? "手動入力または支払済 (ロック中)" : "自動計算 (クリックで修正)"}>
+                                      ¥{rec.calculatedFee.toLocaleString()}
+                                    </span>
+                                    {rec.customFee !== undefined && <Lock className="w-3 h-3 opacity-70" />}
+                                  </div>
+                                )}
                               </td>
 
                               {/* 支払い＆入場一括ボタングループ */}
