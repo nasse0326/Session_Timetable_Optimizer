@@ -233,7 +233,13 @@ export default function ReceptionManagementModal({
   // レンタル加算トグル（手動変更可能）
   const handleToggleRental = (name: string) => {
     const current = getRecord(name);
-    updateRecord(name, { hasRental: !current.hasRental });
+    const willRent = !current.hasRental;
+    const diff = willRent ? pricingConfig.rentalDailyFee : -pricingConfig.rentalDailyFee;
+    updateRecord(name, { 
+      hasRental: willRent,
+      paid: false,
+      customFee: current.customFee !== undefined ? Math.max(0, current.customFee + diff) : undefined
+    });
   };
 
   // 支払い＆チェックイン一発完了
@@ -283,7 +289,13 @@ export default function ReceptionManagementModal({
   // 懇親会トグル
   const handleToggleParty = (name: string) => {
     const current = getRecord(name);
-    updateRecord(name, { partyJoined: !current.partyJoined });
+    const willJoin = !current.partyJoined;
+    const diff = willJoin ? pricingConfig.partyFee : -pricingConfig.partyFee;
+    updateRecord(name, { 
+      partyJoined: willJoin,
+      paid: false,
+      customFee: current.customFee !== undefined ? Math.max(0, current.customFee + diff) : undefined
+    });
   };
 
   // 📊 スプレッドシートからの手動同期
