@@ -314,8 +314,8 @@ export function evaluateSchedule(
         }
       }
 
-      // 4. レンタル機材（特にキーボード/ピアノ）連続演奏ボーナス
-      if (W.rentalConsecutive > 0) {
+      // 4. レンタル機材（特にキーボード/ピアノ）連続演奏ボーナス（休憩を挟まない場合のみ）
+      if (!isBreakBetween && W.rentalConsecutive > 0) {
         const prevRentalCat = getSongRentalCategory(prevItem.song);
         const currRentalCat = getSongRentalCategory(item.song);
 

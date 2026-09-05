@@ -7,6 +7,7 @@ import {
   ParticipantCheckInRecord 
 } from '@/types';
 import { SharedScheduleData } from '@/utils/share';
+import QrScanner from './QrScanner';
 import { aggregateMemberRentalInfo } from '@/utils/rental';
 import {
   X,
@@ -84,6 +85,8 @@ export default function ReceptionManagementModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [editingFeeMember, setEditingFeeMember] = useState<string | null>(null);
   const [editingFeeValue, setEditingFeeValue] = useState<string>('');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scanFeedback, setScanFeedback] = useState<{ name: string; success: boolean; message: string } | null>(null);
   const [filterMode, setFilterMode] = useState<'all' | 'unCheckedIn' | 'checkedIn' | 'unpaid' | 'paid' | 'party'>('all');
   const [copiedBackup, setCopiedBackup] = useState(false);
   const [copiedTsv, setCopiedTsv] = useState(false);
@@ -208,6 +211,40 @@ export default function ReceptionManagementModal({
     });
   };
 
+  // 📷 カメラQRスキャン処理 (参加者QR読取 → 入場チェックイン完了)
+  const handleQrScan = (scannedText: string) => {
+    let targetName = scannedText.trim();
+    if (targetName.startsWith('checkin:')) {
+      targetName = targetName.replace('checkin:', '').trim();
+    }
+
+    const matchedMember = allMembers.find(m => m.trim().toLowerCase() === targetName.toLowerCase());
+    if (matchedMember) {
+      const current = getRecord(matchedMember);
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+      updateRecord(matchedMember, {
+        checkedIn: true,
+        checkInTime: current.checkInTime || timeStr
+      });
+
+      setScanFeedback({
+        name: matchedMember,
+        success: true,
+        message: `✓ ${matchedMember} さんの入場を記録しました！`
+      });
+      setTimeout(() => setScanFeedback(null), 4000);
+    } else {
+      setScanFeedback({
+        name: targetName,
+        success: false,
+        message: `⚠️ 「${targetName}」は見つかりませんでした`
+      });
+      setTimeout(() => setScanFeedback(null), 4000);
+    }
+  };
+
   // 単一レコード更新
   const updateRecord = (name: string, partial: Partial<ParticipantCheckInRecord>) => {
     const current = getRecord(name);
@@ -298,9 +335,10 @@ export default function ReceptionManagementModal({
     });
   };
 
-  // 📊 スプレッドシートからの手動同期
-  const handleSyncFromSheet = async (targetUrl = activeWebhookUrl) => {
-    if (!targetUrl || !targetUrl.trim().startsWith('http')) {
+  // 📊 現在の全データをスプレッドシートへ一括書き出し・再反映（一方通行プッシュ）
+  const handlePushAllToSheet = async () => {
+    const targetUrl = webhookInput.trim() || activeWebhookUrl;
+    if (!targetUrl || !targetUrl.startsWith('http')) {
       setSyncMessage('有効なWebhook URLを入力してください');
       setSyncStatus('error');
       return;
@@ -310,39 +348,34 @@ export default function ReceptionManagementModal({
     setSyncStatus('syncing');
     setSyncMessage(null);
 
+    const participants = allMembers.map(name => {
+      const rec = getRecord(name);
+      const stats = memberStats.get(name);
+      return {
+        memberName: name,
+        songCount: stats?.songCount || 0,
+        parts: stats?.parts || [],
+        hasRental: rec.hasRental,
+        rentalItemName: stats?.rentalItems.join('/') || '',
+        partyJoined: rec.partyJoined,
+        calculatedFee: rec.calculatedFee,
+        paid: rec.paid,
+        checkedIn: rec.checkedIn,
+        checkInTime: rec.checkInTime || '',
+        notes: rec.notes || ''
+      };
+    });
+
     try {
-      const res = await fetchSheetData(targetUrl);
-      if (res.success && res.records) {
-        if (!res.initialized) {
-          setSyncMessage('スプレッドシートはまだ初期化されていません。「初期セットアップ」ボタンを押してください。');
-          setSyncStatus('idle');
-        } else {
-          // リモートレコードをローカルレコードにマージ
-          const nextRecords: Record<string, ParticipantCheckInRecord> = { ...records };
-          allMembers.forEach(name => {
-            const current = getRecord(name);
-            const remote = res.records?.[name];
-            if (remote) {
-              nextRecords[name] = {
-                ...current,
-                paid: remote.paid,
-                checkedIn: remote.checkedIn,
-                checkInTime: remote.checkInTime || current.checkInTime,
-                partyJoined: remote.partyJoined !== undefined ? remote.partyJoined : current.partyJoined,
-                hasRental: remote.hasRental !== undefined ? remote.hasRental : current.hasRental,
-                notes: remote.notes || current.notes
-              };
-            }
-          });
-          onRecordsChange(nextRecords);
-          setSyncStatus('connected');
-          const time = new Date().toLocaleTimeString('ja-JP');
-          setLastSyncTime(time);
-          setSyncMessage(`✓ スプレッドシートから最新データを同期しました (${time})`);
-        }
+      const res = await initSpreadsheet(targetUrl, participants);
+      if (res.success) {
+        setSyncStatus('connected');
+        const time = new Date().toLocaleTimeString('ja-JP');
+        setLastSyncTime(time);
+        setSyncMessage(`✓ スプレッドシートへ最新データを一括反映しました (${time})`);
       } else {
         setSyncStatus('error');
-        setSyncMessage(`同期エラー: ${res.error || '通信に失敗しました'}`);
+        setSyncMessage(`反映エラー: ${res.error || '通信に失敗しました'}`);
       }
     } catch (e: any) {
       setSyncStatus('error');
@@ -410,7 +443,7 @@ export default function ReceptionManagementModal({
       onSpreadsheetWebhookUrlChange(trimmed);
     }
     if (trimmed) {
-      handleSyncFromSheet(trimmed);
+      handlePushAllToSheet();
     } else {
       setSyncStatus('idle');
       setSyncMessage('スプレッドシート連携を解除しました');
@@ -872,12 +905,12 @@ export default function ReceptionManagementModal({
                   {activeWebhookUrl ? (
                     <button
                       type="button"
-                      onClick={() => handleSyncFromSheet()}
+                      onClick={() => handlePushAllToSheet()}
                       disabled={isSyncing}
                       className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all disabled:opacity-50"
                     >
                       <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                      <span>{isSyncing ? '同期中...' : '今すぐ同期'}</span>
+                      <span>{isSyncing ? '反映中...' : 'スプシへ全件再反映'}</span>
                     </button>
                   ) : (
                     <button
@@ -1496,12 +1529,12 @@ export default function ReceptionManagementModal({
                   {activeWebhookUrl && (
                     <button
                       type="button"
-                      onClick={() => handleSyncFromSheet()}
+                      onClick={() => handlePushAllToSheet()}
                       disabled={isSyncing}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md active:scale-95 disabled:opacity-50 shrink-0"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                      <span>{isSyncing ? '同期中...' : '今すぐ最新同期'}</span>
+                      <span>{isSyncing ? '同期中...' : 'スプシへ全件再反映'}</span>
                     </button>
                   )}
                 </div>

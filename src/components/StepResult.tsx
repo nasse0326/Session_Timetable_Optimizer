@@ -997,8 +997,7 @@ export default function StepResult({
         <SharePublishModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
-          shareUrl={shareUrl}
-          songCount={result.schedule.length}
+          result={result}
         />
       )}
     </div>

@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
+import { OptimizationResult } from '../types';
+import { encodeScheduleToUrl } from '../utils/share';
 import { 
   X, 
   Check, 
@@ -11,37 +13,58 @@ import {
   Download, 
   Sparkles, 
   MessageSquare, 
-  Smartphone,
-  Share2,
-  CalendarCheck2
+  Smartphone, 
+  CalendarCheck2,
+  Lock,
+  Tag
 } from 'lucide-react';
 
 interface SharePublishModalProps {
   isOpen: boolean;
   onClose: () => void;
-  shareUrl: string;
-  songCount: number;
+  result: OptimizationResult | null;
 }
 
 export default function SharePublishModal({
   isOpen,
   onClose,
-  shareUrl,
-  songCount
+  result
 }: SharePublishModalProps) {
+  const [eventTitle, setEventTitle] = useState('セッション タイムテーブル');
+  const [adminPassword, setAdminPassword] = useState('');
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedLineMessage, setCopiedLineMessage] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
-  if (!isOpen) return null;
+  // タイトルやパスワードの変更に応じてURLをリアルタイム再生成
+  const shareUrl = useMemo(() => {
+    if (!result || !result.schedule || result.schedule.length === 0) return '';
+    if (typeof window === 'undefined') return '';
+    try {
+      const compressed = encodeScheduleToUrl(result.schedule, eventTitle || undefined, {
+        eventStartTime: result.eventStartTime,
+        openingEndTime: result.openingEndTime,
+        eventEndTime: result.eventEndTime,
+        isExtended: result.isExtended,
+        adminPassword: adminPassword || undefined
+      });
+      return `${window.location.origin}/view#d=${compressed}`;
+    } catch (err) {
+      console.error('Failed to encode share URL', err);
+      return '';
+    }
+  }, [result, eventTitle, adminPassword]);
 
-  const lineMessage = `📋 【セッションタイムテーブルが確定しました！】
+  const songCount = result?.schedule?.length || 0;
+
+  const lineMessage = `📋 【${eventTitle || 'セッションタイムテーブル'}が確定しました！】
 全 ${songCount} 曲のタイムテーブルが完成しました。
 以下のリンクから自分の出演順や空き時間、機材情報をスマホで確認できます！👇
 
 ${shareUrl}`;
 
   const handleCopyUrl = () => {
+    if (!shareUrl) return;
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopiedUrl(true);
       setTimeout(() => setCopiedUrl(false), 2000);
@@ -65,6 +88,8 @@ ${shareUrl}`;
     link.click();
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-slate-900 border border-indigo-500/30 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -80,7 +105,7 @@ ${shareUrl}`;
                 <Sparkles className="w-4 h-4 text-amber-400" />
               </h3>
               <p className="text-xs text-slate-400">
-                参加者がスマホで自分の出演曲をハイライト確認できる専用ページです
+                参加者がスマホで自分の出演曲をハイライト確認できる専用ページを発行します
               </p>
             </div>
           </div>
@@ -93,7 +118,50 @@ ${shareUrl}`;
         </div>
 
         {/* モーダル本文 */}
-        <div className="p-6 overflow-y-auto space-y-6">
+        <div className="p-6 overflow-y-auto space-y-5">
+          {/* 設定カード: イベント名 & 管理パスワード */}
+          <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-4">
+            {/* イベント名 */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-1.5">
+                <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                <span>イベント・セッション名</span>
+                <span className="text-[10px] text-slate-500 font-normal">（参加者画面のタイトルになります）</span>
+              </label>
+              <input
+                type="text"
+                value={eventTitle}
+                onChange={(e) => setEventTitle(e.target.value)}
+                placeholder="例: 2026年9月 秋の軽音セッション"
+                className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            {/* パスワード設定 */}
+            <div className="pt-2 border-t border-slate-800/80">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
+                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>受付管理画面のパスワード</span>
+                  <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                    任意
+                  </span>
+                </label>
+              </div>
+              <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
+                パスワードを設定すると、参加者が「受付管理画面（チェックイン・集金管理）」を開く際にパスワードを要求します。<br />
+                ※未設定の場合はパスワードなしで誰でも開けます。
+              </p>
+              <input
+                type="text"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="例: 1234 (空欄ならパスワードなし)"
+                className="w-full sm:w-60 bg-slate-900 text-slate-200 border border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono"
+              />
+            </div>
+          </div>
+
           {/* 1. 共有URLセクション */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
@@ -122,7 +190,6 @@ ${shareUrl}`;
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
             {/* QRコード表示 */}
             <div className="flex flex-col items-center justify-center p-3 bg-slate-900 rounded-xl border border-slate-800/80">
-              {/* QRコードはデータ上限(~2953バイト)があるため、URL長が超える場合はスキップ */}
               {shareUrl && shareUrl.length <= 2800 ? (
                 <>
                   <div ref={qrRef} className="p-3 bg-white rounded-xl shadow-inner mb-2 flex flex-col items-center justify-center min-w-[150px] min-h-[150px]">

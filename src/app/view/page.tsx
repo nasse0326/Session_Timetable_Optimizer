@@ -204,6 +204,7 @@ function ParticipantViewContent() {
   }, [eventStorageKey]);
 
   const [spreadsheetWebhookUrl, setSpreadsheetWebhookUrl] = useState<string>('');
+  const [urlHashId, setUrlHashId] = useState<string>('');
 
   const handleSpreadsheetWebhookUrlChange = (url: string) => {
     setSpreadsheetWebhookUrl(url);
