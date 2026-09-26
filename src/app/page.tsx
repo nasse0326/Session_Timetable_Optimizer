@@ -10,9 +10,34 @@ import OptimizationAdModal from '@/components/OptimizationAdModal';
 import { SessionConfig, Song, MemberConstraint, OptimizationResult } from '@/types';
 import { parseTsv } from '@/utils/parser';
 import { optimizeSchedule } from '@/utils/optimizer';
-import { Music2 } from 'lucide-react';
+import { Music2, Sun, Moon } from 'lucide-react';
+
+const THEME_STORAGE_KEY = 'session_timetable_theme';
 
 export default function Home() {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // テーマ初期読み込み（保存済み設定があれば復元）
+  useEffect(() => {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as 'dark' | 'light' | null;
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      setTheme(savedTheme);
+    }
+  }, []);
+
+  // テーマ変更をbodyタグに反映
+  useEffect(() => {
+    document.body.classList.toggle('light-theme', theme === 'light');
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+      return next;
+    });
+  }, []);
+
   const [tsv, setTsv] = useState('');
   const [songs, setSongs] = useState<Song[]>([]);
   const [constraints, setConstraints] = useState<MemberConstraint[]>([]);
@@ -90,14 +115,24 @@ export default function Home() {
 
   return (
     <main className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-[1500px] mx-auto font-sans">
-      <header className="mb-8 text-center space-y-3">
+      <header className="mb-8 text-center space-y-3 relative">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="absolute right-0 top-0 flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 light:text-slate-500 light:hover:text-slate-700 bg-slate-800/60 hover:bg-slate-800 light:bg-white light:hover:bg-slate-100 border border-slate-700 light:border-slate-200 px-3 py-2 rounded-xl transition-all shadow-sm"
+          title={theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
+          <span className="hidden sm:inline">{theme === 'dark' ? 'ライトモード' : 'ダークモード'}</span>
+        </button>
+
         <div className="inline-flex items-center justify-center p-3 bg-indigo-500/10 rounded-2xl mb-1">
-          <Music2 className="w-9 h-9 text-indigo-400" />
+          <Music2 className="w-9 h-9 text-indigo-400 light:text-indigo-500" />
         </div>
         <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 tracking-tight">
           Session Timetable Optimizer
         </h1>
-        <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto">
+        <p className="text-slate-400 light:text-slate-500 text-sm md:text-base max-w-2xl mx-auto">
           軽音サークルやセッションの演奏希望データから、連続出演や時間制約を考慮した最適なタイムテーブルを自動生成します。
         </p>
       </header>
@@ -154,7 +189,7 @@ export default function Home() {
         onComplete={handleOptimizationComplete}
       />
       
-      <footer className="mt-16 text-center text-sm text-slate-600">
+      <footer className="mt-16 text-center text-sm text-slate-600 light:text-slate-400">
         <p>Session Timetable Optimizer &copy; {new Date().getFullYear()}</p>
         <p className="mt-1">All processing is done locally in your browser.</p>
       </footer>

@@ -11,38 +11,38 @@ export const SAMPLE_TSV = `連番	カテゴリ	バンド名	アーティスト�
 パート"	"メンバー5
 名前"	"メンバー5
 パート"	音合わせ	備考
-1	自由曲	ブランデー戦記	ブランデー戦記	Kids	なし	なし	SNS投稿OK（モザイクあり）	ももこ	Vo&Gt	なおき	Ba	Chie Oda	Dr					1サビ	
-2	自由曲	BBQ	神様僕は気づいてしまった	CQCQ	なし	なし	SNS投稿OK（モザイクあり）	kitaryu	Vo&Ba	木戸えみな	Gt	蘭丸	Gt	おばたこうき	Dr			1サビ	木戸えみな 14時以降
-3	自由曲	藤くんが踊った〜！！！	BUMP OF CHICKEN	ray	なし	ユウキサイトウ マイク みりん+ Key	SNS投稿OK（モザイクあり）	イトウリョウタ	Gt	ユウキサイトウ	Vo&Gt	青山	Ba	裕子(ひろこ)	Dr	みりん+	Key	1サビ	
-4	自由曲	Claris	Claris	コネクト	なし	なし	SNS投稿OK（モザイクあり）	木戸えみな	Gt	真悠子	Vo	Chie Oda	Dr	瑠来	Key	kitaryu	Ba	1サビ	木戸えみな 14時以降
-5	自由曲	フレンズ	フレンズ	Night town	エレキピアノ	ボイスエフェクター	SNS投稿NG	りりか	Vo	Hiroki SATO	Ba	Tomoki	Vo&Gt	みりん+	Key	おばたこうき	Dr	1サビ〜2Aメロ	
-6	自由曲	運営バンド	GO!GO!7188	こいのうた	なし	なし	SNS投稿OK（モザイクあり）	のざわよしみ	Vo&Gt	Mii	Vo	Gatami	Vo&Dr	晃弘	Ba			1サビ	
-7	自由曲	Age factory	Age factory	Dance all night my friend	なし	佐藤雄一郎 マイク	SNS投稿OK（モザイクあり）	Hiroki SATO	Ba	佐藤雄一郎	Vo&Gt	田中京介	Dr					1サビ	田中京介 初参加
-8	自由曲	相対性理論	相対性理論	ミスパラレルワールド	なし	なし	SNS投稿OK（モザイクあり）	中山智貴	Gt	風音	Vo&Gt	しん	Ba	野島弘太郎	Dr			1サビ	
-9	自由曲	相対性理論	相対性理論	チャイナアドバイス	エレキピアノ	なし	SNS投稿NG	K.Haruka	Dr	ほしのゆりあ	Vo&Gt	青山	Ba	Moringo	Gt	kesalanpatharan	Key	最初から	
-10	自由曲	シンガーズハイ	シンガーズハイ	Kid	なし	なし	SNS投稿OK（モザイクあり）	yuko	Dr	かくぎょ	Vo&Gt	木戸えみな	Gt	なおき	Ba			1サビ	木戸えみな 14時以降, かくぎょ 16:30以降
-11	自由曲	九月魔Ⅱ	聖飢魔II	地獄の皇太子	なし	なし	SNS投稿OK（モザイクあり）	中山智貴	Vo	キクチ(タ)	Ba	三浦友彰	Gt	ほしの	Gt	アキセル	Dr	1サビ	
-12	自由曲	ウェカデモ	Bullet For My Valentine	Waking the Demon	なし	山田、マイク(SENNHEISER e945)	SNS投稿OK（モザイクあり）	中山智貴	Gt	山田	Vo	s.wada	Gt	キクチ(タ)	Ba	サブロー	Dr	1サビ	
-13	自由曲	SHISHAMO	SHISHAMO	夏恋注意報	なし	マイク？	SNS投稿OK（モザイクあり）	みりん+	Vo&Gt	キクチ(タ)	Ba	アキセル	Dr					2Bメロ	
-14	自由曲	瞬間センチメンタル	結束バンド	青春コンプレックス	なし	kesalanpatharan(マイク)	SNS投稿OK（モザイクあり）	kesalanpatharan	Vo	Gatami	Gt	Amikun	Gt	蘭丸	Vo&Ba	あやか	Dr	1サビ	
-15	自由曲	BUMP OF CHICKEN	BUMP OF CHICKEN	ラフ・メイカー	なし	なし	SNS投稿OK（モザイクあり）	のざわよしみ	Dr	Gatami	Vo&Gt	一冴	Gt	青山	Ba			1サビ	
-16	自由曲	ヨルシカ	ヨルシカ	忘れてください	なし	なし	SNS投稿OK（モザイクあり）	𝒮𝑒𝒾𝓃𝒶	Vo	一冴	Gt	kitaryu	Ba	伊藤亮太	Dr	瑠来	Vo&Key	1サビ	
-17	自由曲	シド	シド	妄想日記2	なし	なし	SNS投稿OK（モザイクあり）	もえおかだ	Dr	Amikun	Gt	Mii	Vo	晃弘	Ba			1サビ	
-18	自由曲	あいみょん	あいみょん	マリーゴールド	なし	なし	SNS投稿NG	かくぎょ	Dr	もえおかだ	Gt	中川ひなた	Gt	りりか	Vo	Mii	Ba	1サビ	かくぎょ 16:30以降
-19	自由曲	BSC激辛部	WANIMA	THANX	なし	佐藤雄一郎 マイク	SNS投稿OK（モザイクあり）	佐藤雄一郎	Vo&Ba	Tomoki	Vo&Gt	伊藤亮太	Vo&Dr					イントロからの歌入り	
-20	自由曲	美意識向上委員会	マカロニえんぴつ	レモンパイ	エレキピアノ	佐藤雄一郎 マイク	SNS投稿OK（モザイクあり）	佐藤雄一郎	Vo&Gt	イトウリョウタ	Gt	蘭丸	Vo&Ba	真悠子	Key	伊藤亮太	Vo&Dr	1サビ	
-	課題曲		SHISHAMO	僕に彼女ができたんだ				ももこ	Vo＆Gt	Hiroki SATO	Ba	あやか	Dr					1サビ	
-	課題曲		放課後ティータイム	Don't say“lazy”				𝒮𝑒𝒾𝓃𝒶	Vo＆Gt	真悠子	Gt	盛 貴大	Ba	あやか	Dr	K.Haruka	Key	1サビ	
-	課題曲		放課後ティータイム	Don't say“lazy”				𝒮𝑒𝒾𝓃𝒶	Vo＆Gt	星野 眞樹	Gt	Hiroki SATO	Ba	ムヒ	Dr	K.Haruka	Key	1サビ	
-	課題曲		レベッカ	フレンズ				風音	Vo	野島弘太郎	Gt	Hiroki SATO	Ba	ムヒ	Dr	K.Haruka	Key	1サビ	
-	課題曲		レベッカ	フレンズ				のざわよしみ	Vo	星野 眞樹	Gt	Hiroki SATO	Ba	ムヒ	Dr	みりん+	Key	1サビ	
-	課題曲		DOSE	曇天				藤田敏彰	Vo	星野 眞樹	Gt	盛 貴大	Ba	アキセル	Dr			1サビ	
-	課題曲		ELLEGARDEN	カーマイン				ユウキサイトウ	Vo	星野 眞樹	Gt(Back)	みりん+	Gt(Lead)	盛 貴大	Ba	アキセル	Dr	1サビ	
-	シャッフル		シャッフル	A				風音	Vo＆Gt	Tomoki	Gt	盛 貴大	Ba	徳本 光芳	Dr	伏見 瑠捺	Key		
-	シャッフル		シャッフル	B				藤田敏彰	Vo	みりん+	Gt	Moringo	Ba	ムヒ	Dr				
-	シャッフル		シャッフル	Ｃ				山田	Vo	野島弘太郎	Gt	キクチ(タ)	Ba	徳本 光芳	Dr				
-	シャッフル		シャッフル	D				野島弘太郎	Vo＆Gt	gatami	Gt	盛 貴大	Ba	ムヒ	Dr				
-	シャッフル		シャッフル	E				ユウキサイトウ	Vo＆Gt	Moringo	Gt	晃弘	Ba	Yoko	Dr				`;
+1	自由曲	ブランデー戦記	ブランデー戦記	Kids	なし	なし	SNS投稿OK（モザイクあり）	陽菜	Vo&Gt	蒼太	Ba	Yui Mori	Dr					1サビ	
+2	自由曲	BBQ	神様僕は気づいてしまった	CQCQ	なし	なし	SNS投稿OK（モザイクあり）	tatsuki	Vo&Ba	森田みなみ	Gt	陽向	Gt	大和翔太	Dr			1サビ	森田みなみ 14時以降
+3	自由曲	藤くんが踊った〜！！！	BUMP OF CHICKEN	ray	なし	コウタサトウ マイク ゆずぽん Key	SNS投稿OK（モザイクあり）	ナカムラリョウ	Gt	コウタサトウ	Vo&Gt	秋山	Ba	直子(なおこ)	Dr	ゆずぽん	Key	1サビ	
+4	自由曲	Claris	Claris	コネクト	なし	なし	SNS投稿OK（モザイクあり）	森田みなみ	Gt	美結	Vo	Yui Mori	Dr	湊	Key	tatsuki	Ba	1サビ	森田みなみ 14時以降
+5	自由曲	フレンズ	フレンズ	Night town	エレキピアノ	ボイスエフェクター	SNS投稿NG	みずき	Vo	Kenta Suzuki	Ba	Shota	Vo&Gt	ゆずぽん	Key	大和翔太	Dr	1サビ〜2Aメロ	
+6	自由曲	運営バンド	GO!GO!7188	こいのうた	なし	なし	SNS投稿OK（モザイクあり）	はまだよしの	Vo&Gt	Riko	Vo	Tamachi	Vo&Dr	拓海	Ba			1サビ	
+7	自由曲	Age factory	Age factory	Dance all night my friend	なし	高橋悠一郎 マイク	SNS投稿OK（モザイクあり）	Kenta Suzuki	Ba	高橋悠一郎	Vo&Gt	中村京太	Dr					1サビ	中村京太 初参加
+8	自由曲	相対性理論	相対性理論	ミスパラレルワールド	なし	なし	SNS投稿OK（モザイクあり）	西田智也	Gt	心美	Vo&Gt	りく	Ba	島野浩太郎	Dr			1サビ	
+9	自由曲	相対性理論	相対性理論	チャイナアドバイス	エレキピアノ	なし	SNS投稿NG	M.Hikaru	Dr	つきののどか	Vo&Gt	秋山	Ba	Yorimo	Gt	tanpopoflower	Key	最初から	
+10	自由曲	シンガーズハイ	シンガーズハイ	Kid	なし	なし	SNS投稿OK（モザイクあり）	saki	Dr	みつぎょ	Vo&Gt	森田みなみ	Gt	蒼太	Ba			1サビ	森田みなみ 14時以降, みつぎょ 16:30以降
+11	自由曲	九月魔Ⅱ	聖飢魔II	地獄の皇太子	なし	なし	SNS投稿OK（モザイクあり）	西田智也	Vo	ヤマグチ(ユ)	Ba	川口友哉	Gt	つきの	Gt	ブレイズ	Dr	1サビ	
+12	自由曲	ウェカデモ	Bullet For My Valentine	Waking the Demon	なし	岡本、マイク(SENNHEISER e945)	SNS投稿OK（モザイクあり）	西田智也	Gt	岡本	Vo	k.hayashi	Gt	ヤマグチ(ユ)	Ba	ゴロー	Dr	1サビ	
+13	自由曲	SHISHAMO	SHISHAMO	夏恋注意報	なし	マイク？	SNS投稿OK（モザイクあり）	ゆずぽん	Vo&Gt	ヤマグチ(ユ)	Ba	ブレイズ	Dr					2Bメロ	
+14	自由曲	瞬間センチメンタル	結束バンド	青春コンプレックス	なし	tanpopoflower(マイク)	SNS投稿OK（モザイクあり）	tanpopoflower	Vo	Tamachi	Gt	Ryotan	Gt	陽向	Vo&Ba	まなか	Dr	1サビ	
+15	自由曲	BUMP OF CHICKEN	BUMP OF CHICKEN	ラフ・メイカー	なし	なし	SNS投稿OK（モザイクあり）	はまだよしの	Dr	Tamachi	Vo&Gt	千冴	Gt	秋山	Ba			1サビ	
+16	自由曲	ヨルシカ	ヨルシカ	忘れてください	なし	なし	SNS投稿OK（モザイクあり）	𝒜𝓎𝒶	Vo	千冴	Gt	tatsuki	Ba	加藤陽太	Dr	湊	Vo&Key	1サビ	
+17	自由曲	シド	シド	妄想日記2	なし	なし	SNS投稿OK（モザイクあり）	くれおかべ	Dr	Ryotan	Gt	Riko	Vo	拓海	Ba			1サビ	
+18	自由曲	あいみょん	あいみょん	マリーゴールド	なし	なし	SNS投稿NG	みつぎょ	Dr	くれおかべ	Gt	小川ひまり	Gt	みずき	Vo	Riko	Ba	1サビ	みつぎょ 16:30以降
+19	自由曲	BSC激辛部	WANIMA	THANX	なし	高橋悠一郎 マイク	SNS投稿OK（モザイクあり）	高橋悠一郎	Vo&Ba	Shota	Vo&Gt	加藤陽太	Vo&Dr					イントロからの歌入り	
+20	自由曲	美意識向上委員会	マカロニえんぴつ	レモンパイ	エレキピアノ	高橋悠一郎 マイク	SNS投稿OK（モザイクあり）	高橋悠一郎	Vo&Gt	ナカムラリョウ	Gt	陽向	Vo&Ba	美結	Key	加藤陽太	Vo&Dr	1サビ	
+	課題曲		SHISHAMO	僕に彼女ができたんだ				陽菜	Vo＆Gt	Kenta Suzuki	Ba	まなか	Dr					1サビ	
+	課題曲		放課後ティータイム	Don't say“lazy”				𝒜𝓎𝒶	Vo＆Gt	美結	Gt	早瀬 大和	Ba	まなか	Dr	M.Hikaru	Key	1サビ	
+	課題曲		放課後ティータイム	Don't say“lazy”				𝒜𝓎𝒶	Vo＆Gt	松原 一樹	Gt	Kenta Suzuki	Ba	ポコ	Dr	M.Hikaru	Key	1サビ	
+	課題曲		レベッカ	フレンズ				心美	Vo	島野浩太郎	Gt	Kenta Suzuki	Ba	ポコ	Dr	M.Hikaru	Key	1サビ	
+	課題曲		レベッカ	フレンズ				はまだよしの	Vo	松原 一樹	Gt	Kenta Suzuki	Ba	ポコ	Dr	ゆずぽん	Key	1サビ	
+	課題曲		DOSE	曇天				遠藤俊平	Vo	松原 一樹	Gt	早瀬 大和	Ba	ブレイズ	Dr			1サビ	
+	課題曲		ELLEGARDEN	カーマイン				コウタサトウ	Vo	松原 一樹	Gt(Back)	ゆずぽん	Gt(Lead)	早瀬 大和	Ba	ブレイズ	Dr	1サビ	
+	シャッフル		シャッフル	A				心美	Vo＆Gt	Shota	Gt	早瀬 大和	Ba	竹田 光一	Dr	広瀬 瑠奈	Key		
+	シャッフル		シャッフル	B				遠藤俊平	Vo	ゆずぽん	Gt	Yorimo	Ba	ポコ	Dr				
+	シャッフル		シャッフル	Ｃ				岡本	Vo	島野浩太郎	Gt	ヤマグチ(ユ)	Ba	竹田 光一	Dr				
+	シャッフル		シャッフル	D				島野浩太郎	Vo＆Gt	tamachi	Gt	早瀬 大和	Ba	ポコ	Dr				
+	シャッフル		シャッフル	E				コウタサトウ	Vo＆Gt	Yorimo	Gt	拓海	Ba	Nana	Dr				`;
 
 function parseTimeStr(timeStr: string): number | null {
   // "15:30", "15時30分", "15時半", "15時"

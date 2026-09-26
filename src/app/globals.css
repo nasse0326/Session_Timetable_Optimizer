@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* body.light-theme が付与されている間、light: バリアントのクラスを有効にする */
+@custom-variant light (&:where(.light-theme, .light-theme *));
+
 @theme {
   --color-background: #0f172a;
   --color-foreground: #f8fafc;

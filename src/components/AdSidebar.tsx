@@ -7,56 +7,56 @@ export default function AdSidebar() {
   return (
     <aside className="w-[280px] shrink-0 sticky top-6 flex flex-col gap-6">
       {/* 広告枠 1: レクタングル (300x250 / 280x250) */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-4 backdrop-blur-md shadow-xl transition-all hover:border-slate-700">
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 px-1">
+      <div className="bg-slate-900/60 light:bg-white border border-slate-800 light:border-slate-200 rounded-3xl p-4 backdrop-blur-md shadow-xl light:shadow-md transition-all hover:border-slate-700 light:hover:border-slate-300">
+        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 light:text-slate-400 uppercase tracking-wider mb-2 px-1">
           <span className="flex items-center gap-1">
-            <Megaphone className="w-3.5 h-3.5 text-indigo-400" />
+            <Megaphone className="w-3.5 h-3.5 text-indigo-400 light:text-indigo-600" />
             スポンサーリンク
           </span>
-          <span className="text-[10px] bg-slate-800/80 px-1.5 py-0.5 rounded text-slate-400">PR</span>
+          <span className="text-[10px] bg-slate-800/80 light:bg-slate-200 px-1.5 py-0.5 rounded text-slate-400 light:text-slate-600">PR</span>
         </div>
 
-        {/* 
+        {/*
           【広告コード挿入エリア 1】
           Google AdSense や アフィリエイトタグ（サウンドハウス、音楽スタジオ等）をここに貼り付けます。
         */}
-        <div className="w-full h-[240px] bg-gradient-to-br from-slate-950 to-slate-900 border border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center text-center p-4 group hover:border-indigo-500/40 transition-colors">
-          <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-            <Music className="w-5 h-5 text-indigo-400" />
+        <div className="w-full h-[240px] bg-gradient-to-br from-slate-950 to-slate-900 light:from-slate-50 light:to-white border border-dashed border-slate-800 light:border-slate-300 rounded-2xl flex flex-col items-center justify-center text-center p-4 group hover:border-indigo-500/40 transition-colors">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 light:bg-indigo-100 border border-indigo-500/20 light:border-indigo-300 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <Music className="w-5 h-5 text-indigo-400 light:text-indigo-600" />
           </div>
-          <p className="text-xs font-bold text-slate-300 mb-1">
+          <p className="text-xs font-bold text-slate-300 light:text-slate-700 mb-1">
             広告・スポンサー募集枠
           </p>
-          <p className="text-[11px] text-slate-500 leading-relaxed max-w-[190px]">
+          <p className="text-[11px] text-slate-500 light:text-slate-400 leading-relaxed max-w-[190px]">
             楽器・機材・音楽スタジオ・軽音イベント等のバナー掲載エリア (300×250)
           </p>
         </div>
       </div>
 
       {/* サポート・おすすめ情報 or 広告枠 2 (300x300〜300x600) */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-4 backdrop-blur-md shadow-xl transition-all hover:border-slate-700">
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 px-1">
+      <div className="bg-slate-900/60 light:bg-white border border-slate-800 light:border-slate-200 rounded-3xl p-4 backdrop-blur-md shadow-xl light:shadow-md transition-all hover:border-slate-700 light:hover:border-slate-300">
+        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 light:text-slate-400 uppercase tracking-wider mb-2 px-1">
           <span className="flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-pink-400" />
             おすすめサービス
           </span>
-          <span className="text-[10px] bg-slate-800/80 px-1.5 py-0.5 rounded text-slate-400">INFO</span>
+          <span className="text-[10px] bg-slate-800/80 light:bg-slate-200 px-1.5 py-0.5 rounded text-slate-400 light:text-slate-600">INFO</span>
         </div>
 
-        {/* 
+        {/*
           【広告コード挿入エリア 2】
         */}
-        <div className="w-full min-h-[200px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/20 border border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center text-center p-4 group hover:border-pink-500/40 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-            <ShieldCheck className="w-5 h-5 text-pink-400" />
+        <div className="w-full min-h-[200px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/20 light:from-slate-50 light:via-white light:to-indigo-50 border border-dashed border-slate-800 light:border-slate-300 rounded-2xl flex flex-col items-center justify-center text-center p-4 group hover:border-pink-500/40 transition-colors">
+          <div className="w-10 h-10 rounded-xl bg-pink-500/10 light:bg-pink-100 border border-pink-500/20 light:border-pink-300 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+            <ShieldCheck className="w-5 h-5 text-pink-400 light:text-pink-600" />
           </div>
-          <p className="text-xs font-bold text-slate-300 mb-1">
+          <p className="text-xs font-bold text-slate-300 light:text-slate-700 mb-1">
             Session Timetable Optimizer
           </p>
-          <p className="text-[11px] text-slate-400 leading-relaxed mb-3 max-w-[200px]">
+          <p className="text-[11px] text-slate-400 light:text-slate-500 leading-relaxed mb-3 max-w-[200px]">
             データはすべてブラウザ内で安全に計算され、外部サーバーに送信されません。
           </p>
-          <div className="text-[10px] text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-lg">
+          <div className="text-[10px] text-indigo-400 light:text-indigo-600 bg-indigo-500/10 light:bg-indigo-100 border border-indigo-500/20 light:border-indigo-300 px-2.5 py-1 rounded-lg">
             常設バナー枠 (300×250 / 300×600)
           </div>
         </div>

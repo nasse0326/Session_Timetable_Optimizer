@@ -4,16 +4,16 @@ import React, { useState, useMemo, useRef } from 'react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { OptimizationResult } from '../types';
 import { encodeScheduleToUrl } from '../utils/share';
-import { 
-  X, 
-  Check, 
-  Copy, 
-  ExternalLink, 
-  QrCode, 
-  Download, 
-  Sparkles, 
-  MessageSquare, 
-  Smartphone, 
+import {
+  X,
+  Check,
+  Copy,
+  ExternalLink,
+  QrCode,
+  Download,
+  Sparkles,
+  MessageSquare,
+  Smartphone,
   CalendarCheck2,
   Lock,
   Tag
@@ -91,27 +91,27 @@ ${shareUrl}`;
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-indigo-500/30 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 light:bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 light:bg-white border border-indigo-500/30 light:border-indigo-200 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* モーダルヘッダー */}
-        <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/40">
+        <div className="px-6 py-5 border-b border-slate-800 light:border-slate-200 flex items-center justify-between bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/40 light:from-indigo-50 light:via-white light:to-purple-50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
               <CalendarCheck2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-slate-100 light:text-slate-900 flex items-center gap-2">
                 <span>タイムテーブル確定＆共有リンク発行</span>
                 <Sparkles className="w-4 h-4 text-amber-400" />
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 light:text-slate-500">
                 参加者がスマホで自分の出演曲をハイライト確認できる専用ページを発行します
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
+            className="p-2 text-slate-400 light:text-slate-500 hover:text-slate-200 light:hover:text-slate-800 hover:bg-slate-800 light:hover:bg-slate-100 rounded-xl transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -120,35 +120,35 @@ ${shareUrl}`;
         {/* モーダル本文 */}
         <div className="p-6 overflow-y-auto space-y-5">
           {/* 設定カード: イベント名 & 管理パスワード */}
-          <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-4">
+          <div className="bg-slate-950/70 light:bg-slate-50 p-4 rounded-2xl border border-slate-800 light:border-slate-200 space-y-4">
             {/* イベント名 */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-1.5">
-                <Tag className="w-3.5 h-3.5 text-indigo-400" />
+              <label className="text-xs font-semibold text-slate-300 light:text-slate-600 flex items-center gap-1.5 mb-1.5">
+                <Tag className="w-3.5 h-3.5 text-indigo-400 light:text-indigo-600" />
                 <span>イベント・セッション名</span>
-                <span className="text-[10px] text-slate-500 font-normal">（参加者画面のタイトルになります）</span>
+                <span className="text-[10px] text-slate-500 light:text-slate-400 font-normal">（参加者画面のタイトルになります）</span>
               </label>
               <input
                 type="text"
                 value={eventTitle}
                 onChange={(e) => setEventTitle(e.target.value)}
                 placeholder="例: 2026年9月 秋の軽音セッション"
-                className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-900 light:bg-white text-slate-200 light:text-slate-800 border border-slate-700 light:border-slate-300 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             {/* パスワード設定 */}
-            <div className="pt-2 border-t border-slate-800/80">
+            <div className="pt-2 border-t border-slate-800/80 light:border-slate-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <label className="text-xs font-semibold text-slate-300 light:text-slate-600 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-400 light:text-amber-500" />
                   <span>受付管理画面のパスワード</span>
-                  <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] bg-amber-500/15 light:bg-amber-100 text-amber-300 light:text-amber-700 border border-amber-500/30 light:border-amber-300 px-1.5 py-0.5 rounded">
                     任意
                   </span>
                 </label>
               </div>
-              <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
+              <p className="text-[11px] text-slate-400 light:text-slate-500 mb-2 leading-relaxed">
                 パスワードを設定すると、参加者が「受付管理画面（チェックイン・集金管理）」を開く際にパスワードを要求します。<br />
                 ※未設定の場合はパスワードなしで誰でも開けます。
               </p>
@@ -157,15 +157,15 @@ ${shareUrl}`;
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
                 placeholder="例: 1234 (空欄ならパスワードなし)"
-                className="w-full sm:w-60 bg-slate-900 text-slate-200 border border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono"
+                className="w-full sm:w-60 bg-slate-900 light:bg-white text-slate-200 light:text-slate-800 border border-slate-700 light:border-slate-300 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono"
               />
             </div>
           </div>
 
           {/* 1. 共有URLセクション */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Smartphone className="w-4 h-4 text-indigo-400" />
+            <label className="text-xs font-semibold text-slate-300 light:text-slate-600 flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-indigo-400 light:text-indigo-600" />
               参加者閲覧用 URL (完全永続・サーバー不要)
             </label>
             <div className="flex items-center gap-2">
@@ -174,7 +174,7 @@ ${shareUrl}`;
                 readOnly
                 value={shareUrl}
                 onFocus={(e) => e.target.select()}
-                className="flex-1 bg-slate-950 text-slate-200 font-mono text-xs px-3.5 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-indigo-500/50 shadow-inner"
+                className="flex-1 bg-slate-950 light:bg-slate-50 text-slate-200 light:text-slate-800 font-mono text-xs px-3.5 py-2.5 rounded-xl border border-slate-800 light:border-slate-200 focus:outline-none focus:border-indigo-500/50 shadow-inner"
               />
               <button
                 onClick={handleCopyUrl}
@@ -187,9 +187,9 @@ ${shareUrl}`;
           </div>
 
           {/* 2. QRコード ＆ プレビューボタン */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 light:bg-slate-50 p-4 rounded-2xl border border-slate-800 light:border-slate-200">
             {/* QRコード表示 */}
-            <div className="flex flex-col items-center justify-center p-3 bg-slate-900 rounded-xl border border-slate-800/80">
+            <div className="flex flex-col items-center justify-center p-3 bg-slate-900 light:bg-white rounded-xl border border-slate-800/80 light:border-slate-200">
               {shareUrl && shareUrl.length <= 2800 ? (
                 <>
                   <div ref={qrRef} className="p-3 bg-white rounded-xl shadow-inner mb-2 flex flex-col items-center justify-center min-w-[150px] min-h-[150px]">
@@ -210,7 +210,7 @@ ${shareUrl}`;
                   </div>
                   <button
                     onClick={handleDownloadQr}
-                    className="text-[11px] text-slate-300 hover:text-white flex items-center gap-1 hover:bg-slate-800 px-3 py-1 rounded-lg transition-colors font-medium"
+                    className="text-[11px] text-slate-300 light:text-slate-600 hover:text-white light:hover:text-slate-900 flex items-center gap-1 hover:bg-slate-800 light:hover:bg-slate-100 px-3 py-1 rounded-lg transition-colors font-medium"
                   >
                     <Download className="w-3.5 h-3.5" />
                     QR画像を保存 (高画質)
@@ -218,16 +218,16 @@ ${shareUrl}`;
                 </>
               ) : shareUrl ? (
                 <div className="flex flex-col items-center justify-center gap-2 text-center p-4 min-h-[150px]">
-                  <QrCode className="w-8 h-8 text-slate-600" />
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <QrCode className="w-8 h-8 text-slate-600 light:text-slate-400" />
+                  <p className="text-[11px] text-slate-400 light:text-slate-500 leading-relaxed">
                     曲数が多いためQRコードを<br />生成できません。
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-slate-500 light:text-slate-400">
                     上のURLをコピーしてLINE等で共有してください
                   </p>
                 </div>
               ) : (
-                <div className="text-[10px] text-slate-500 text-center min-h-[150px] flex items-center">
+                <div className="text-[10px] text-slate-500 light:text-slate-400 text-center min-h-[150px] flex items-center">
                   QRコード準備中
                 </div>
               )}
@@ -236,11 +236,11 @@ ${shareUrl}`;
             {/* 説明とプレビュー */}
             <div className="flex flex-col justify-between space-y-3 py-1">
               <div className="space-y-2">
-                <div className="text-xs font-bold text-slate-200 flex items-center gap-1">
-                  <QrCode className="w-4 h-4 text-purple-400" />
+                <div className="text-xs font-bold text-slate-200 light:text-slate-800 flex items-center gap-1">
+                  <QrCode className="w-4 h-4 text-purple-400 light:text-purple-600" />
                   会場や受付に貼ってスマホ読取
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-slate-400 light:text-slate-500 leading-relaxed">
                   QR画像を印刷してスタジオやライブハウスの壁に貼れば、参加者がスマホカメラでかざすだけで即座にタイムテーブルを開けます。
                 </p>
               </div>
@@ -249,7 +249,7 @@ ${shareUrl}`;
                 href={shareUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold py-2.5 px-3 rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 transition-all text-center"
+                className="w-full bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-200 light:text-slate-700 hover:text-white light:hover:text-slate-900 text-xs font-semibold py-2.5 px-3 rounded-xl border border-slate-700 light:border-slate-300 flex items-center justify-center gap-1.5 transition-all text-center"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 参加者画面をプレビュー確認
@@ -260,13 +260,13 @@ ${shareUrl}`;
           {/* 3. LINE / Slack 連絡用定型文 */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-emerald-400" />
+              <label className="text-xs font-semibold text-slate-300 light:text-slate-600 flex items-center gap-1.5">
+                <MessageSquare className="w-4 h-4 text-emerald-400 light:text-emerald-600" />
                 LINE / Slack 連絡用メッセージ
               </label>
               <button
                 onClick={handleCopyLineMessage}
-                className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                className="text-[11px] font-semibold text-emerald-400 light:text-emerald-600 hover:text-emerald-300 light:hover:text-emerald-700 flex items-center gap-1"
               >
                 {copiedLineMessage ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedLineMessage ? 'メッセージコピー完了！' : 'メッセージを丸ごとコピー'}
@@ -277,16 +277,16 @@ ${shareUrl}`;
               rows={4}
               value={lineMessage}
               onFocus={(e) => e.target.select()}
-              className="w-full bg-slate-950 text-slate-300 font-mono text-[11px] p-3 rounded-xl border border-slate-800 focus:outline-none leading-relaxed shadow-inner"
+              className="w-full bg-slate-950 light:bg-slate-50 text-slate-300 light:text-slate-700 font-mono text-[11px] p-3 rounded-xl border border-slate-800 light:border-slate-200 focus:outline-none leading-relaxed shadow-inner"
             />
           </div>
         </div>
 
         {/* モーダルフッター */}
-        <div className="px-6 py-4 border-t border-slate-800 bg-slate-900/80 flex items-center justify-end">
+        <div className="px-6 py-4 border-t border-slate-800 light:border-slate-200 bg-slate-900/80 light:bg-slate-50 flex items-center justify-end">
           <button
             onClick={onClose}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-2 rounded-xl text-xs font-semibold transition-colors"
+            className="bg-slate-800 light:bg-slate-200 hover:bg-slate-700 light:hover:bg-slate-300 text-slate-300 light:text-slate-700 px-5 py-2 rounded-xl text-xs font-semibold transition-colors"
           >
             閉じる
           </button>
