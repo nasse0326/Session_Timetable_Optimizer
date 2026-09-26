@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { decodeScheduleFromUrl, hashString, SharedScheduleData } from '@/utils/share';
 import { getPartCategory } from '@/utils/partStyle';
-import AdInlineBanner from '@/components/AdInlineBanner';
+import AdStickyBottomBanner from '@/components/AdStickyBottomBanner';
+import { PARTICIPANT_BANNER_ADS } from '@/config/bannerAds';
 import ReceptionManagementModal from '@/components/ReceptionManagementModal';
 import ParticipantQrModal from '@/components/ParticipantQrModal';
 import { aggregateMemberRentalInfo } from '@/utils/rental';
@@ -1223,11 +1224,6 @@ function ParticipantViewContent() {
         </p>
       </header>
 
-      {/* 上部スポンサー広告バナー */}
-      <div className="no-print mb-6">
-        <AdInlineBanner variant="compact" />
-      </div>
-
       {/* 🌟 マイ出演曲ハイライト・メンバーセレクター */}
       <section className={`no-print border rounded-3xl p-4 sm:p-5 mb-6 shadow-xl backdrop-blur-md transition-colors ${
         isDark 
@@ -1870,11 +1866,6 @@ function ParticipantViewContent() {
         renderTableView(false)
       )}
 
-      {/* 下部スポンサー広告バナー */}
-      <div className="no-print mt-8">
-        <AdInlineBanner variant="standard" />
-      </div>
-
       {/* 受付・集金管理モーダル */}
       <ReceptionManagementModal
         isOpen={isReceptionModalOpen}
@@ -1914,6 +1905,9 @@ function ParticipantViewContent() {
           <ChevronRight className="w-3.5 h-3.5" />
         </Link>
       </footer>
+
+      {/* スマホ画面下部・常時表示バナー（複数広告ローテーション・閉じるボタンあり） */}
+      <AdStickyBottomBanner ads={PARTICIPANT_BANNER_ADS} />
     </main>
   );
 }
