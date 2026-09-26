@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { OptimizationResult, SessionConfig, MemberConstraint, Song } from '../types';
 import { encodeScheduleToUrl } from '../utils/share';
 import { recalculateSchedule } from '../utils/optimizer';
+import { getPartCategory, getPartPriority, sortMembers } from '../utils/partStyle';
 import SharePublishModal from './SharePublishModal';
 import {
   Play, Copy, Check, AlertTriangle, Coffee, Loader2,
@@ -22,36 +23,20 @@ interface StepResultProps {
 }
 
 const getPartBadgeStyle = (part: string) => {
-  const p = part.toLowerCase();
-  if (p.includes('vo') || p.includes('ボーカル') || p.includes('うた')) {
-    return 'bg-pink-500/15 text-pink-300 border-pink-500/30 light:bg-pink-100 light:text-pink-700 light:border-pink-300';
+  switch (getPartCategory(part)) {
+    case 'vocal':
+      return 'bg-pink-500/15 text-pink-300 border-pink-500/30 light:bg-pink-100 light:text-pink-700 light:border-pink-300';
+    case 'guitar':
+      return 'bg-sky-500/15 text-sky-300 border-sky-500/30 light:bg-sky-100 light:text-sky-700 light:border-sky-300';
+    case 'bass':
+      return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 light:bg-emerald-100 light:text-emerald-700 light:border-emerald-300';
+    case 'drum':
+      return 'bg-amber-500/15 text-amber-300 border-amber-500/30 font-semibold light:bg-amber-100 light:text-amber-700 light:border-amber-300';
+    case 'key':
+      return 'bg-purple-500/15 text-purple-300 border-purple-500/30 light:bg-purple-100 light:text-purple-700 light:border-purple-300';
+    default:
+      return 'bg-slate-800 text-slate-300 border-slate-700 light:bg-slate-200 light:text-slate-700 light:border-slate-300';
   }
-  if (p.includes('gt') || p.includes('ギター') || p.includes('g1') || p.includes('g2')) {
-    return 'bg-sky-500/15 text-sky-300 border-sky-500/30 light:bg-sky-100 light:text-sky-700 light:border-sky-300';
-  }
-  if (p.includes('ba') || p.includes('ベース')) {
-    return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 light:bg-emerald-100 light:text-emerald-700 light:border-emerald-300';
-  }
-  if (p.includes('dr') || p.includes('ドラム')) {
-    return 'bg-amber-500/15 text-amber-300 border-amber-500/30 font-semibold light:bg-amber-100 light:text-amber-700 light:border-amber-300';
-  }
-  if (p.includes('key') || p.includes('キーボード') || p.includes('pf') || p.includes('syn')) {
-    return 'bg-purple-500/15 text-purple-300 border-purple-500/30 light:bg-purple-100 light:text-purple-700 light:border-purple-300';
-  }
-  return 'bg-slate-800 text-slate-300 border-slate-700 light:bg-slate-200 light:text-slate-700 light:border-slate-300';
-};
-
-const getPartPriority = (part: string) => {
-  const p = part.toLowerCase();
-  if (p.includes('vo') || p.includes('ボーカル') || p.includes('うた')) return 1;
-  if (p.includes('gt') || p.includes('ギター') || p.includes('g1') || p.includes('g2')) return 2;
-  if (p.includes('ba') || p.includes('ベース')) return 3;
-  if (p.includes('dr') || p.includes('ドラム')) return 4;
-  return 5;
-};
-
-const sortMembers = (members: {name: string, part: string}[]) => {
-  return [...members].sort((a, b) => getPartPriority(a.part) - getPartPriority(b.part));
 };
 
 export default function StepResult({
@@ -495,7 +480,7 @@ export default function StepResult({
                 </p>
                 <p className="text-[10px] text-slate-500 light:text-slate-400 mt-1">
                   未設定の場合、誰でもパスワードなしで管理画面を開けます。<br className="hidden sm:block" />
-                  参加者にURLを共有する場合は設定を推奨します。
+                  参加者にURLを共有する場合は設定を推奨します（※簡易的な悪戯防止であり、強固なセキュリティではありません）。
                 </p>
               </div>
               <div className="w-full sm:w-48 shrink-0">

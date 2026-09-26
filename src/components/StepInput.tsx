@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { SAMPLE_TSV } from '../utils/parser';
+import { getPartCategory } from '../utils/partStyle';
 import { Song, MemberConstraint } from '../types';
 import {
   FileSpreadsheet,
@@ -29,23 +30,20 @@ interface StepInputProps {
 
 // パートごとのバッジカラー
 const getPartBadgeStyle = (part: string) => {
-  const p = part.toLowerCase();
-  if (p.includes('vo') || p.includes('ボーカル') || p.includes('うた')) {
-    return 'bg-pink-500/15 text-pink-300 border-pink-500/30 light:bg-pink-100 light:text-pink-700 light:border-pink-300';
+  switch (getPartCategory(part)) {
+    case 'vocal':
+      return 'bg-pink-500/15 text-pink-300 border-pink-500/30 light:bg-pink-100 light:text-pink-700 light:border-pink-300';
+    case 'guitar':
+      return 'bg-sky-500/15 text-sky-300 border-sky-500/30 light:bg-sky-100 light:text-sky-700 light:border-sky-300';
+    case 'bass':
+      return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 light:bg-emerald-100 light:text-emerald-700 light:border-emerald-300';
+    case 'drum':
+      return 'bg-amber-500/15 text-amber-300 border-amber-500/30 font-semibold light:bg-amber-100 light:text-amber-700 light:border-amber-300';
+    case 'key':
+      return 'bg-purple-500/15 text-purple-300 border-purple-500/30 light:bg-purple-100 light:text-purple-700 light:border-purple-300';
+    default:
+      return 'bg-slate-800 text-slate-300 border-slate-700 light:bg-slate-200 light:text-slate-700 light:border-slate-300';
   }
-  if (p.includes('gt') || p.includes('ギター') || p.includes('g1') || p.includes('g2')) {
-    return 'bg-sky-500/15 text-sky-300 border-sky-500/30 light:bg-sky-100 light:text-sky-700 light:border-sky-300';
-  }
-  if (p.includes('ba') || p.includes('ベース')) {
-    return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 light:bg-emerald-100 light:text-emerald-700 light:border-emerald-300';
-  }
-  if (p.includes('dr') || p.includes('ドラム')) {
-    return 'bg-amber-500/15 text-amber-300 border-amber-500/30 font-semibold light:bg-amber-100 light:text-amber-700 light:border-amber-300';
-  }
-  if (p.includes('key') || p.includes('キーボード') || p.includes('pf') || p.includes('syn')) {
-    return 'bg-purple-500/15 text-purple-300 border-purple-500/30 light:bg-purple-100 light:text-purple-700 light:border-purple-300';
-  }
-  return 'bg-slate-800 text-slate-300 border-slate-700 light:bg-slate-200 light:text-slate-700 light:border-slate-300';
 };
 
 export default function StepInput({ tsv, onTsvChange, songs, constraints }: StepInputProps) {

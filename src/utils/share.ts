@@ -33,6 +33,19 @@ export interface SharedScheduleData {
   }[];
 }
 
+/**
+ * 文字列から短い決定論的ハッシュ値を生成（FNV-1a）。
+ * 受付・支払いデータの保存キーなど、スケジュール内容そのものに紐づく一意なIDが必要な箇所で使用します。
+ */
+export function hashString(str: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 // 0:00からの経過分数を計算
 function toMinutes(t?: string): number | undefined {
   if (!t) return undefined;

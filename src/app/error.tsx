@@ -14,13 +14,13 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-slate-950 font-sans text-slate-200">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-slate-950 light:bg-slate-50 font-sans text-slate-200 light:text-slate-800">
       <div className="flex flex-col items-center gap-4 text-center max-w-md">
         <div className="text-4xl">\u26A0\uFE0F</div>
-        <h2 className="text-lg font-bold text-slate-100">
+        <h2 className="text-lg font-bold text-slate-100 light:text-slate-900">
           \u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u307E\u3057\u305F
         </h2>
-        <p className="text-sm text-slate-400 leading-relaxed">
+        <p className="text-sm text-slate-400 light:text-slate-500 leading-relaxed">
           {error.message || "\u4E88\u671F\u3057\u306A\u3044\u30A8\u30E9\u30FC\u304C\u767A\u751F\u3057\u307E\u3057\u305F\u3002"}
         </p>
         <button

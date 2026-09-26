@@ -6,7 +6,7 @@ import {
   PaymentConfig, 
   ParticipantCheckInRecord 
 } from '@/types';
-import { SharedScheduleData } from '@/utils/share';
+import { SharedScheduleData, encodeScheduleToUrl } from '@/utils/share';
 import QrScanner from './QrScanner';
 import { aggregateMemberRentalInfo } from '@/utils/rental';
 import {
@@ -107,6 +107,8 @@ export default function ReceptionManagementModal({
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [copiedGasCode, setCopiedGasCode] = useState(false);
   const [showGasCodePreview, setShowGasCodePreview] = useState(false);
+  const [updatedShareUrl, setUpdatedShareUrl] = useState('');
+  const [copiedUpdatedUrl, setCopiedUpdatedUrl] = useState(false);
 
   // 元の曲リストから個人へのレンタル自動紐づけマップを構築
   const autoRentalMap = useMemo(() => {
@@ -448,6 +450,41 @@ export default function ReceptionManagementModal({
       setSyncStatus('idle');
       setSyncMessage('スプレッドシート連携を解除しました');
     }
+  };
+
+  // 📊 Webhook URLを含めた最新の共有URLを再生成
+  // (スケジュール確定時に発行した元のリンクは静的な文字列のため、後からWebhook URLを設定しても
+  //  自動的には反映されません。参加者のセルフチェックインをスプレッドシートに同期させたい場合は、
+  //  この新しいリンクを発行し直して再共有する必要があります)
+  const handleGenerateUpdatedShareUrl = () => {
+    if (typeof window === 'undefined') return;
+    const urlToEmbed = webhookInput.trim() || activeWebhookUrl;
+
+    const scheduleForEncode = scheduleData.schedule.map((item, idx) => ({
+      song: { id: `song-${idx}`, ...item.song },
+      startTime: item.startTime,
+      endTime: item.endTime,
+      isBreakAfter: item.isBreakAfter,
+      conflicts: item.conflicts || []
+    }));
+
+    const compressed = encodeScheduleToUrl(scheduleForEncode, scheduleData.title, {
+      eventStartTime: scheduleData.eventStartTime,
+      openingEndTime: scheduleData.openingEndTime,
+      eventEndTime: scheduleData.eventEndTime,
+      isExtended: scheduleData.isExtended,
+      adminPassword: scheduleData.adminPassword,
+      spreadsheetWebhookUrl: urlToEmbed || undefined
+    });
+    setUpdatedShareUrl(`${window.location.origin}/view#d=${compressed}`);
+  };
+
+  const handleCopyUpdatedUrl = () => {
+    if (!updatedShareUrl) return;
+    navigator.clipboard.writeText(updatedShareUrl).then(() => {
+      setCopiedUpdatedUrl(true);
+      setTimeout(() => setCopiedUpdatedUrl(false), 2000);
+    });
   };
 
   // 📊 GASコードのコピー
@@ -1560,7 +1597,8 @@ export default function ReceptionManagementModal({
                 </h4>
 
                 <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                  発行された「ウェブアプリのURL」を貼り付けてください。登録されたURLはタイムテーブル共有リンク（/view#d=...）にも自動的に含まれ、スタッフ全員のスマホで即座に同期が有効になります。
+                  発行された「ウェブアプリのURL」を貼り付けてください。<br />
+                  ※このブラウザで受付管理画面を開く分にはこのまま使えますが、参加者に配布済みの共有URL自体には自動反映されません。参加者のセルフチェックインもスプレッドシートに同期させたい場合は、下の「共有リンクを更新」から新しいリンクを発行し直して再配布してください。
                 </p>
 
                 <div className="space-y-2.5">
@@ -1595,6 +1633,50 @@ export default function ReceptionManagementModal({
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* 共有リンクの再発行（Webhook URLを含めて更新） */}
+              <div className={`p-4 sm:p-5 rounded-2xl border space-y-3 ${
+                isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <h4 className="text-sm font-bold flex items-center gap-1.5">
+                  <RefreshCw className="w-4 h-4 text-indigo-400" />
+                  <span>共有リンクを更新（参加者のセルフチェックイン同期を有効化）</span>
+                </h4>
+                <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  上のWebhook URLを含めた新しい共有リンクを発行します。参加者にはこの新しいリンクを再共有してください（元のリンクも引き続き閲覧はできますが、参加者側のセルフチェックインはスプレッドシートに同期されません）。
+                </p>
+                <button
+                  type="button"
+                  onClick={handleGenerateUpdatedShareUrl}
+                  disabled={!webhookInput.trim() && !activeWebhookUrl}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md active:scale-95 disabled:opacity-50"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>共有リンクを更新して発行</span>
+                </button>
+
+                {updatedShareUrl && (
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value={updatedShareUrl}
+                      onFocus={(e) => e.target.select()}
+                      className={`flex-1 border rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none ${
+                        isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyUpdatedUrl}
+                      className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md shrink-0 flex items-center justify-center gap-1.5"
+                    >
+                      {copiedUpdatedUrl ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedUpdatedUrl ? 'コピー完了！' : 'コピー'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 3ステップ初期設定ガイド ＆ GASコード */}

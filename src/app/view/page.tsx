@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
-import { decodeScheduleFromUrl, SharedScheduleData } from '@/utils/share';
+import { decodeScheduleFromUrl, hashString, SharedScheduleData } from '@/utils/share';
+import { getPartCategory } from '@/utils/partStyle';
 import AdInlineBanner from '@/components/AdInlineBanner';
 import ReceptionManagementModal from '@/components/ReceptionManagementModal';
 import ParticipantQrModal from '@/components/ParticipantQrModal';
@@ -96,6 +97,9 @@ function ParticipantViewContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
+  // 共有URLの生データ（圧縮文字列）のハッシュ。受付データの保存キーをスケジュール内容そのものに紐づけるために使用
+  const [urlHashId, setUrlHashId] = useState<string>('');
+
   // ライト / ダークモード切り替え
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
@@ -171,11 +175,12 @@ function ParticipantViewContent() {
     }
   }, []);
 
-  // イベント固有のストレージキー
+  // イベント固有のストレージキー（共有URLの内容そのもののハッシュに紐づけ、タイトル・曲数・開始時刻が
+  // 偶然一致する別イベント間で受付・支払いデータが混ざらないようにする）
   const eventStorageKey = useMemo(() => {
-    if (!data) return 'session_reception_default';
-    return `session_reception_${data.title || 'event'}_${data.schedule.length}_${data.eventStartTime || ''}`;
-  }, [data]);
+    if (!data || !urlHashId) return 'session_reception_default';
+    return `session_reception_${urlHashId}`;
+  }, [data, urlHashId]);
 
   // 受付・支払いデータの復元
   useEffect(() => {
@@ -204,7 +209,6 @@ function ParticipantViewContent() {
   }, [eventStorageKey]);
 
   const [spreadsheetWebhookUrl, setSpreadsheetWebhookUrl] = useState<string>('');
-  const [urlHashId, setUrlHashId] = useState<string>('');
 
   const handleSpreadsheetWebhookUrlChange = (url: string) => {
     setSpreadsheetWebhookUrl(url);
@@ -320,6 +324,7 @@ function ParticipantViewContent() {
         }
 
         setData(decoded);
+        setUrlHashId(hashString(compressedStr));
         if (decoded.spreadsheetWebhookUrl) {
           setSpreadsheetWebhookUrl(decoded.spreadsheetWebhookUrl);
         }
@@ -618,21 +623,25 @@ function ParticipantViewContent() {
   const isDark = theme === 'dark';
 
   const getPartBadgeStyle = (part: string) => {
-    const p = part.toLowerCase();
+    const category = getPartCategory(part);
     if (isDark) {
-      if (p.includes('vo') || p.includes('ボーカル')) return 'bg-pink-500/20 text-pink-300 border-pink-500/40';
-      if (p.includes('gt') || p.includes('ギター')) return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
-      if (p.includes('ba') || p.includes('ベース')) return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
-      if (p.includes('dr') || p.includes('ドラム')) return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
-      if (p.includes('key') || p.includes('キーボード') || p.includes('pf')) return 'bg-blue-500/20 text-blue-300 border-blue-500/40';
-      return 'bg-slate-800 text-slate-300 border-slate-700';
+      switch (category) {
+        case 'vocal': return 'bg-pink-500/20 text-pink-300 border-pink-500/40';
+        case 'guitar': return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        case 'bass': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+        case 'drum': return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+        case 'key': return 'bg-blue-500/20 text-blue-300 border-blue-500/40';
+        default: return 'bg-slate-800 text-slate-300 border-slate-700';
+      }
     } else {
-      if (p.includes('vo') || p.includes('ボーカル')) return 'bg-pink-100 text-pink-700 border-pink-300';
-      if (p.includes('gt') || p.includes('ギター')) return 'bg-amber-100 text-amber-800 border-amber-300';
-      if (p.includes('ba') || p.includes('ベース')) return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      if (p.includes('dr') || p.includes('ドラム')) return 'bg-purple-100 text-purple-800 border-purple-300 font-medium';
-      if (p.includes('key') || p.includes('キーボード') || p.includes('pf')) return 'bg-blue-100 text-blue-800 border-blue-300';
-      return 'bg-slate-100 text-slate-700 border-slate-300';
+      switch (category) {
+        case 'vocal': return 'bg-pink-100 text-pink-700 border-pink-300';
+        case 'guitar': return 'bg-amber-100 text-amber-800 border-amber-300';
+        case 'bass': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+        case 'drum': return 'bg-purple-100 text-purple-800 border-purple-300 font-medium';
+        case 'key': return 'bg-blue-100 text-blue-800 border-blue-300';
+        default: return 'bg-slate-100 text-slate-700 border-slate-300';
+      }
     }
   };
 

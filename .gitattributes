@@ -1,0 +1,2 @@
+# Windows/Macなど異なるOS間でリポジトリを移動しても改行コードが揺れないようにする
+* text=auto eol=lf

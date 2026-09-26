@@ -432,9 +432,18 @@ export function optimizeSchedule(
   constraints: MemberConstraint[],
   config: SessionConfig
 ): OptimizationResult {
-  const NUM_RESTARTS = 60;
+  // 1回の評価コスト（generateSchedule + evaluateSchedule）は曲数にほぼ比例するため、
+  // 曲数が多いイベントでもメインスレッドが固まりにくいよう、restart回数を曲数に応じて絞る。
+  // （曲数40件を基準に、restart×iterationの総評価回数を概ね一定に保つ簡易的なスケーリング）
+  const BASELINE_SONGS = 40;
+  const BASE_RESTARTS = 60;
+  const MIN_RESTARTS = 8;
   const NUM_ITERATIONS = 500;
-  
+  const NUM_RESTARTS = Math.max(
+    MIN_RESTARTS,
+    Math.min(BASE_RESTARTS, Math.round(BASE_RESTARTS * BASELINE_SONGS / Math.max(1, songs.length)))
+  );
+
   let bestResult: OptimizationResult | null = null;
   let bestOrder: Song[] = [];
 
